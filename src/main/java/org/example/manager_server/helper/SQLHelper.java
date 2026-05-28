@@ -1,0 +1,148 @@
+package org.example.manager_server.helper;
+
+import org.example.shared.model.Account;
+import org.example.shared.model.CitizenRequest;
+import org.example.shared.model.Department;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
+import org.hibernate.cfg.Configuration;
+import org.hibernate.query.Query;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.UUID;
+
+public class SQLHelper {
+    private static final SessionFactory sessionFactory = buildSessionFactory();
+    private static SessionFactory buildSessionFactory() {
+        try {
+            return new Configuration().configure().buildSessionFactory();
+        }
+        catch(Exception e) {
+            System.err.println("Khởi tạo SessionFactory thất bại: " + e.getMessage());
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+    public static SessionFactory getSessionFactory() {
+        return sessionFactory;
+    }
+    public static List<Department> getAllDepartments() {
+        try(Session session = sessionFactory.openSession()) {
+            return session.createQuery("FROM Department", Department.class).list();
+        }
+        catch(Exception e) {
+            System.err.println("Có lỗi khi lấy danh sách đơn vị: " + e.getMessage());
+            return null;
+        }
+    }
+    public static boolean addDepartment(String departmentName, int numOfProcessedRequest, int maxConcurrentRequestInDay) {
+        boolean isCompleted = false;
+        try(Session session = sessionFactory.openSession()) {
+            Transaction tx = null;
+            try {
+                tx = session.beginTransaction();
+                Department newDepartment = new Department(departmentName, numOfProcessedRequest, maxConcurrentRequestInDay);
+                session.persist(newDepartment);
+                tx.commit();
+                isCompleted = true;
+            }
+            catch(Exception e) {
+                if (tx != null) tx.rollback();
+                System.err.println("Lỗi khi thêm đơn vị: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+        catch(Exception e) {
+            e.printStackTrace();
+        }
+        return isCompleted;
+    }
+
+    public static int getTicketNumber(String fullName, String nationalId, LocalDateTime requestDate, UUID departmentId) {
+        try(Session session = sessionFactory.openSession()) {
+            Transaction tx = null;
+            try {
+                tx = session.beginTransaction();
+                CitizenRequest newRequest = new CitizenRequest(fullName, nationalId, requestDate, departmentId);
+                newRequest.setRequestNumber(getNewTicketNumber(newRequest.getDepartmentId(), session));
+                if(newRequest.getRequestNumber() != -1) {
+                    session.persist(newRequest);
+                }
+                tx.commit();
+                return newRequest.getRequestNumber();
+            }
+            catch(Exception e) {
+                if(tx != null) tx.rollback();
+                e.printStackTrace();
+                return -1;
+            }
+        }
+        catch(Exception e) {
+            e.printStackTrace();
+            return -1;
+        }
+    }
+
+    private static int getNewTicketNumber(UUID departmentID, Session session) {
+        int result = -1;
+        try {
+            Query<Department> departmentQuery = session.createQuery("FROM Department WHERE departmentId = :departmentId", Department.class);
+            departmentQuery.setParameter("departmentId", departmentID);
+            List<Department> department = departmentQuery.list();
+            Department dept = department.get(0);
+            Query<LocalDateTime> lastRequestDateQuery = session.createQuery("SELECT requestDate FROM CitizenRequest WHERE departmentId = :departmentId ORDER BY requestDate DESC");
+            lastRequestDateQuery.setParameter("departmentId", departmentID);
+            List<LocalDateTime> lastRequestDate = lastRequestDateQuery.list();
+            if(!lastRequestDate.isEmpty() && !lastRequestDate.get(0).format(DateTimeFormatter.ISO_DATE).equals(LocalDateTime.now().format(DateTimeFormatter.ISO_DATE))) {
+                dept.setNumOfProcessedRequest(0);
+                result = 0;
+            }
+            if(dept.getNumOfProcessedRequest() < dept.getMaxConcurrentRequestInDay()) {
+                result = dept.getNumOfProcessedRequest() + 1;
+                dept.setNumOfProcessedRequest(result);
+                session.merge(dept);
+            }
+            else return -1;
+        }
+        catch(Exception e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    public static Account getAccounts(String usrName) {
+        Account acc = null;
+        try(Session session = sessionFactory.openSession()) {
+            Query<Account> accountQuery = session.createQuery("FROM Account WHERE userName = :userName", Account.class);
+            accountQuery.setParameter("userName", usrName);
+            List<Account> accountList = accountQuery.list();
+            if(!accountList.isEmpty()) {
+                acc = accountList.get(0);
+            }
+        }
+        catch(Exception e) {
+            e.printStackTrace();
+        }
+        return acc;
+    }
+
+    public static boolean createAccount(String usrName, String hashedPwd, int role) {
+        boolean isCompleted = false;
+        try(Session session = sessionFactory.openSession()) {
+
+        }
+        catch(Exception e) {
+
+        }
+        return isCompleted;
+    }
+
+    public static void shutdown() {
+        if (sessionFactory != null) {
+            sessionFactory.close();
+            System.out.println("Đã đóng kết nối Database.");
+        }
+    }
+}
