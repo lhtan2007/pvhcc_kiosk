@@ -1,12 +1,7 @@
 package org.example.manager_client.helper;
-
-import org.example.shared.model.Account;
-
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class LoginHelper {
     public static String hashPwd(String original_pwd) {

@@ -12,18 +12,16 @@ public class ClockPanel extends SwingWorker<Void, String> {
     private final DateTimeFormatter dt;
     private final JLabel currentTime;
 
-    public ClockPanel(JPanel parent_panel, GridBagConstraints layoutConstraint, Font font) {
+    public ClockPanel(JPanel parent_panel, Font font) {
         df = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         dt = DateTimeFormatter.ofPattern("HH:mm:ss");
         JPanel clockPanel = new JPanel();
-        clockPanel.setBackground(Color.red);
         clockPanel.setLayout(new BorderLayout());
         currentTime = new JLabel();
-        currentTime.setHorizontalAlignment(SwingConstants.CENTER);
+        currentTime.setHorizontalAlignment(SwingConstants.RIGHT);
         currentTime.setFont(font);
-        currentTime.setForeground(new Color(255, 203, 5));
         clockPanel.add(currentTime, BorderLayout.CENTER);
-        parent_panel.add(clockPanel, layoutConstraint);
+        parent_panel.add(clockPanel, BorderLayout.SOUTH);
     }
 
     @Override
@@ -33,8 +31,8 @@ public class ClockPanel extends SwingWorker<Void, String> {
             String currentDate = this.getCurrentDate();
             String currentTime = this.getCurrentTime();
             String res = "<html><div style='text-align: center;'>"
-                    + currentDOW + "<br>"
-                    + currentDate + "<br>"
+                    + currentDOW + ", "
+                    + currentDate + ", "
                     + currentTime
                     + "</div></html>";
             publish(res);

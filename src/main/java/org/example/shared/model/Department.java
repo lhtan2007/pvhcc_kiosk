@@ -17,9 +17,6 @@ public class Department {
     private String departmentName;
     private int numOfProcessedRequest;
     private int maxConcurrentRequestInDay;
-    @JdbcTypeCode(SqlTypes.VARCHAR)
-    @Column(name = "currentRequestId", length = 36, columnDefinition = "VARCHAR(36)")
-    private UUID currentRequestId;
 
     public Department() {
     }
@@ -62,11 +59,7 @@ public class Department {
         this.maxConcurrentRequestInDay = maxConcurrentRequestInDay;
     }
 
-    public UUID getCurrentRequestId() {
-        return currentRequestId;
-    }
-
-    public void setCurrentRequestId(UUID currentRequestId) {
-        this.currentRequestId = currentRequestId;
+    public String toString() {
+        return departmentName;
     }
 }

@@ -6,8 +6,12 @@ import org.example.manager_client.helper.ClockPanel;
 import org.example.manager_client.helper.LoginHelper;
 import org.example.manager_client.helper.NetworkInitializer;
 import org.example.shared.helper.CustomSVGTranscoder;
+import org.example.shared.model.Department;
 
 import javax.swing.*;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledDocument;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -15,6 +19,8 @@ import java.io.File;
 import java.io.IOException;
 
 public class MainManagerClient {
+    public static int currentInviteCount = 0;
+
     public static void main(String[] args) {
         //FlatLaf
         System.setProperty("flatlaf.useWindowDecorations", "false");
@@ -60,6 +66,7 @@ public class MainManagerClient {
                 mainWindow.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
                 JPanel mainPane = (JPanel)mainWindow.getContentPane();
                 mainPane.setPreferredSize(new Dimension(1280, 720));
+                mainWindow.setMinimumSize(mainWindow.getPreferredSize());
                 mainPane.setLayout(new BorderLayout());
                 mainWindow.pack();
                 mainWindow.setLocationRelativeTo(null);
@@ -81,7 +88,6 @@ public class MainManagerClient {
                         + "HỆ THỐNG QUẢN LÝ CÔNG TÁC TIẾP CÔNG DÂN THỰC HIỆN TTHC"
                         + "</html>");
                 bannerPlaceholder.setFont(svnKelsonBold);
-
                 banner_gbc.gridx = 0;
                 banner_gbc.weightx = 0.8;
                 banner_gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -89,8 +95,6 @@ public class MainManagerClient {
                 banner_gbc.gridx = 1;
                 banner_gbc.weightx = 0.2;
                 banner_gbc.fill = GridBagConstraints.HORIZONTAL;
-                /*ClockPanel clockPanel = new ClockPanel(banner, banner_gbc, new Font("Segoe UI", Font.BOLD, 24));
-                clockPanel.execute();*/
                 mainPane.add(banner, BorderLayout.NORTH);
 
                 //Main zone
@@ -168,10 +172,10 @@ public class MainManagerClient {
                                     if("ok".equals(response.get("status").getAsString())) {
                                         boolean isLoggedIn = response.get("data").getAsBoolean();
                                         if(isLoggedIn) {
-                                            System.out.println("Login successfully!");
+                                            mainCardLayout.next(mainZone);
                                         }
                                         else {
-                                            JOptionPane.showMessageDialog(null, "Thông tin tên đăng nhập hoặc mật khẩu không đúng. Vui lòng kiểm tra lại.", "Đăng nhập thất bại", JOptionPane.ERROR_MESSAGE);
+                                            JOptionPane.showMessageDialog(null, "Thông tin đăng nhập không đúng hoặc tài khoản đang được sử dụng trên thiết bị khác. Vui lòng kiểm tra lại.", "Đăng nhập thất bại", JOptionPane.ERROR_MESSAGE);
                                         }
                                         usrNameInput.setText("");
                                         pwdInput.setText("");
@@ -195,6 +199,192 @@ public class MainManagerClient {
                 mainZone.add(loginPane);
 
                 JPanel dashboardPane = new JPanel();
+                dashboardPane.setLayout(new BorderLayout());
+                ClockPanel clock = new ClockPanel(dashboardPane, UIManager.getFont("defaultFont").deriveFont(Font.BOLD | Font.ITALIC));
+                clock.execute();
+
+                //Button panel
+                JPanel btnPanel = new JPanel();
+                btnPanel.setLayout(new BoxLayout(btnPanel, BoxLayout.X_AXIS));
+                JComboBox<Department> departmentList = new JComboBox<Department>();
+                JButton importList = new JButton("Nhập danh sách đơn vị");
+                JButton exportList = new JButton("Xuất danh sách đơn vị");
+                JButton exportRequestList = new JButton("Xuất danh sách lượt tiếp công dân");
+                JButton addDepartment = new JButton("Thêm đơn vị");
+                JButton modifyDepartment = new JButton("Sửa thông tin đơn vị");
+                JButton deleteDepartment = new JButton("Xóa đơn vị");
+                btnPanel.add(departmentList);
+                btnPanel.add(importList);
+                btnPanel.add(exportList);
+                btnPanel.add(exportRequestList);
+                btnPanel.add(addDepartment);
+                btnPanel.add(modifyDepartment);
+                btnPanel.add(deleteDepartment);
+                dashboardPane.add(btnPanel, BorderLayout.NORTH);
+
+                //Department information and statisitcs panel
+                JPanel deptPanel = new JPanel();
+                deptPanel.setBackground(Color.GRAY);
+                deptPanel.setLayout(new BoxLayout(deptPanel, BoxLayout.Y_AXIS));
+                JPanel deptInfoPanel = new JPanel();
+                deptInfoPanel.setLayout(new BoxLayout(deptInfoPanel, BoxLayout.Y_AXIS));
+                deptInfoPanel.setBorder(BorderFactory.createTitledBorder("Thông tin đơn vị"));
+                deptInfoPanel.setPreferredSize(new Dimension(400, 300));
+                deptInfoPanel.setMaximumSize(deptInfoPanel.getPreferredSize());
+                deptInfoPanel.add(Box.createVerticalStrut(30));
+                JTextPane deptName = new JTextPane();
+                SimpleAttributeSet deptName_sas = new SimpleAttributeSet();
+                StyleConstants.setAlignment(deptName_sas, StyleConstants.ALIGN_CENTER);
+                StyledDocument deptName_doc = deptName.getStyledDocument();
+                deptName_doc.setParagraphAttributes(0, deptName_doc.getLength(), deptName_sas, false);
+                deptName.setEditable(false);
+                deptName.setCursor(null);
+                deptName.setOpaque(false);
+                deptName.setFocusable(false);
+                deptName.setFont(UIManager.getFont("defaultFont").deriveFont(Font.BOLD, 24));
+                deptName.setForeground(UIManager.getColor("Label.foreground"));
+                deptName.setAlignmentX(Component.CENTER_ALIGNMENT);
+                deptName.setText("Các ban quản lý dự án và các đơn vị sự nghiệp trực thuộc UBND xã");
+                deptInfoPanel.add(deptName);
+                JPanel deptDetailPanel = new JPanel();
+                GridBagLayout deptDetailPanelGbl = new GridBagLayout();
+                GridBagConstraints deptDetailPanelGbc = new GridBagConstraints();
+                deptDetailPanel.setLayout(deptDetailPanelGbl);
+                JLabel numOfProcessedRequest = new JLabel("Số lượt công dân đến làm thủ tục đã xử lý");
+                JLabel numOfProcessedRequestSrv = new JLabel("100");
+                JLabel maxConcurrentRqInDay = new JLabel("Số lượt tiếp công dân tối đa trong ngày");
+                JLabel maxConcurrentRqInDaySrv = new JLabel("200");
+                deptDetailPanelGbc.gridx = 0;
+                deptDetailPanelGbc.gridy = 0;
+                deptDetailPanelGbc.weightx = 0.8;
+                deptDetailPanelGbc.weighty = 1;
+                deptDetailPanelGbc.fill = GridBagConstraints.HORIZONTAL;
+                deptDetailPanel.add(numOfProcessedRequest, deptDetailPanelGbc);
+                deptDetailPanelGbc.gridx = 1;
+                deptDetailPanel.add(numOfProcessedRequestSrv, deptDetailPanelGbc);
+                deptDetailPanelGbc.gridx = 0;
+                deptDetailPanelGbc.gridy = 1;
+                deptDetailPanel.add(maxConcurrentRqInDay, deptDetailPanelGbc);
+                deptDetailPanelGbc.gridx = 1;
+                deptDetailPanel.add(maxConcurrentRqInDaySrv, deptDetailPanelGbc);
+                deptInfoPanel.add(deptDetailPanel);
+
+                JPanel deptStatisticsPanel = new JPanel();
+                deptStatisticsPanel.setBorder(BorderFactory.createTitledBorder("Thống kê"));
+
+                deptPanel.add(deptInfoPanel);
+                deptPanel.add(deptStatisticsPanel);
+                dashboardPane.add(deptPanel, BorderLayout.WEST);
+                //Citizen's request approval panel
+                JPanel ctzRequestWrapperPanel = new JPanel();
+                ctzRequestWrapperPanel.setLayout(new BoxLayout(ctzRequestWrapperPanel, BoxLayout.Y_AXIS));
+                ctzRequestWrapperPanel.setPreferredSize(new Dimension(300, 0));
+
+                JPanel ctzRequestPanel = new JPanel();
+                ctzRequestPanel.setLayout(new BoxLayout(ctzRequestPanel, BoxLayout.Y_AXIS));
+                ctzRequestPanel.setBorder(BorderFactory.createTitledBorder("Lượt hiện tại"));
+                ctzRequestPanel.add(Box.createVerticalStrut(50));
+                JLabel requestNumber = new JLabel("123");
+                requestNumber.setAlignmentX(Container.CENTER_ALIGNMENT);
+                requestNumber.setFont(UIManager.getFont("defaultFont").deriveFont(Font.BOLD, 36));
+                requestNumber.setMaximumSize(new Dimension(Integer.MAX_VALUE, requestNumber.getPreferredSize().height));
+                requestNumber.setHorizontalAlignment(SwingConstants.CENTER);
+                ctzRequestPanel.add(requestNumber);
+                ctzRequestPanel.add(Box.createVerticalStrut(50));
+                JLabel fullName = new JLabel("Họ và tên");
+                fullName.setAlignmentX(Component.CENTER_ALIGNMENT);
+                fullName.setFont(UIManager.getFont("defaultFont").deriveFont(Font.ITALIC));
+                fullName.setMaximumSize(new Dimension(Integer.MAX_VALUE, fullName.getPreferredSize().height));
+                fullName.setHorizontalAlignment(SwingConstants.LEFT);
+                ctzRequestPanel.add(fullName);
+                ctzRequestPanel.add(Box.createVerticalStrut(5));
+                JLabel fullNameSrv = new JLabel("Nguyễn Văn A");
+                fullNameSrv.setAlignmentX(Component.CENTER_ALIGNMENT);
+                fullNameSrv.setFont(UIManager.getFont("defaultFont").deriveFont(Font.BOLD));
+                fullNameSrv.setMaximumSize(new Dimension(Integer.MAX_VALUE, fullNameSrv.getPreferredSize().height));
+                fullNameSrv.setHorizontalAlignment(SwingConstants.CENTER);
+                ctzRequestPanel.add(fullNameSrv);
+                ctzRequestPanel.add(Box.createVerticalStrut(5));
+                JLabel nationalId = new JLabel("Số định danh cá nhân");
+                nationalId.setMaximumSize(new Dimension(Integer.MAX_VALUE, nationalId.getPreferredSize().height));
+                nationalId.setAlignmentX(Component.CENTER_ALIGNMENT);
+                nationalId.setFont(UIManager.getFont("defaultFont").deriveFont(Font.ITALIC));
+                nationalId.setHorizontalAlignment(SwingConstants.LEFT);
+                ctzRequestPanel.add(nationalId);
+                ctzRequestPanel.add(Box.createVerticalStrut(5));
+                JLabel nationalIdSrv = new JLabel("000000000000");
+                nationalIdSrv.setAlignmentX(Component.CENTER_ALIGNMENT);
+                nationalIdSrv.setFont(UIManager.getFont("defaultFont").deriveFont(Font.BOLD));
+                nationalIdSrv.setMaximumSize(new Dimension(Integer.MAX_VALUE, nationalIdSrv.getPreferredSize().height));
+                nationalIdSrv.setHorizontalAlignment(SwingConstants.CENTER);
+                ctzRequestPanel.add(nationalIdSrv);
+                ctzRequestPanel.add(Box.createVerticalStrut(5));
+                JPanel actionPanel = new JPanel();
+                actionPanel.setLayout(new GridLayout(2,2,10,10));
+                JPanel buttonWrapper = new JPanel();
+                CardLayout btnWrapperLayout = new CardLayout();
+                buttonWrapper.setLayout(btnWrapperLayout);
+                JButton inviteCtz = new JButton("Mời công dân đến làm việc");
+                inviteCtz.setAlignmentX(Container.CENTER_ALIGNMENT);
+                JButton confirmRequest = new JButton("Xác nhận đã tiếp công dân");
+                confirmRequest.setAlignmentX(Container.CENTER_ALIGNMENT);
+                confirmRequest.setMaximumSize(new Dimension(Integer.MAX_VALUE, confirmRequest.getPreferredSize().height));
+                JButton confirmCancelRq = new JButton("<html>Xác nhận công dân<br>không đến làm việc</html>");
+                confirmCancelRq.setAlignmentX(Container.CENTER_ALIGNMENT);
+
+                inviteCtz.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        if(currentInviteCount < 3) {
+                            //TODO: Add actual invite logic
+                            currentInviteCount++;
+                        }
+                        else {
+                            btnWrapperLayout.show(buttonWrapper, "CANCEL");
+                        }
+                    }
+                });
+                confirmRequest.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        //TODO: Add actual confirmation logic
+                    }
+                });
+                confirmCancelRq.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        //TODO: Add actual logic
+                        currentInviteCount = 0;
+                        btnWrapperLayout.show(buttonWrapper, "INVITE");
+                    }
+                });
+
+
+                buttonWrapper.add(inviteCtz, "INVITE");
+                buttonWrapper.add(confirmCancelRq, "CANCEL");
+                buttonWrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, buttonWrapper.getPreferredSize().height));
+                ctzRequestPanel.add(Box.createVerticalStrut(30));
+                ctzRequestPanel.add(buttonWrapper);
+                ctzRequestPanel.add(Box.createVerticalStrut(2));
+                ctzRequestPanel.add(confirmRequest);
+                ctzRequestPanel.add(Box.createVerticalStrut(2));
+                ctzRequestPanel.add(actionPanel);
+                ctzRequestWrapperPanel.add(ctzRequestPanel);
+                //Request queue
+                JPanel rqQueueDisplay = new JPanel();
+                rqQueueDisplay.setBorder(BorderFactory.createTitledBorder("Hàng đợi"));
+                rqQueueDisplay.setLayout(new BorderLayout());
+
+                ctzRequestWrapperPanel.add(rqQueueDisplay);
+                dashboardPane.add(ctzRequestWrapperPanel, BorderLayout.EAST);
+
+                //Request log
+                JPanel rqLogDisplay = new JPanel();
+                rqLogDisplay.setBorder(BorderFactory.createTitledBorder("Nhật ký tiếp công dân"));
+                rqLogDisplay.setLayout(new BorderLayout());
+
+                dashboardPane.add(rqLogDisplay, BorderLayout.CENTER);
+                mainZone.add(dashboardPane);
             }
         });
     }

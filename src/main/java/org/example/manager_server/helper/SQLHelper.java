@@ -130,11 +130,17 @@ public class SQLHelper {
 
     public static boolean createAccount(String usrName, String hashedPwd, int role) {
         boolean isCompleted = false;
+        Transaction tx = null;
         try(Session session = sessionFactory.openSession()) {
-
+            tx = session.beginTransaction();
+            Account newAccount = new Account(usrName, hashedPwd, role);
+            session.persist(newAccount);
+            tx.commit();
+            isCompleted = true;
         }
         catch(Exception e) {
-
+            if(tx != null) tx.rollback();
+            e.printStackTrace();
         }
         return isCompleted;
     }

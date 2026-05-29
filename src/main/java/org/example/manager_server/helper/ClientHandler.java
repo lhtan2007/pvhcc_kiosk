@@ -91,8 +91,9 @@ public class ClientHandler implements Runnable {
                     Account acc = SQLHelper.getAccounts(userName);
                     response.addProperty("action", "LOGIN");
                     response.addProperty("status", "ok");
-                    if(acc != null && acc.getHashedPwd().equals(hashedPwd)) {
+                    if(acc != null && !acc.getLoginStatus() && acc.getHashedPwd().equals(hashedPwd)) {
                         response.addProperty("data", true);
+                        acc.setLoginStatus(true);
                     }
                     else {
                         response.addProperty("data", false);
