@@ -3,24 +3,28 @@ package org.example.manager_client;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.google.gson.JsonObject;
 import org.example.manager_client.helper.ClockPanel;
+import org.example.manager_client.helper.DataUpdater;
 import org.example.manager_client.helper.LoginHelper;
 import org.example.manager_client.helper.NetworkInitializer;
 import org.example.shared.helper.CustomSVGTranscoder;
 import org.example.shared.model.Department;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.io.File;
 import java.io.IOException;
 
 public class MainManagerClient {
     public static int currentInviteCount = 0;
-
+    public static DefaultComboBoxModel<Department> departmentListModel = new DefaultComboBoxModel<Department>();
     public static void main(String[] args) {
         //FlatLaf
         System.setProperty("flatlaf.useWindowDecorations", "false");
@@ -31,6 +35,11 @@ public class MainManagerClient {
             System.err.println("Failed to initialize LaF");
         }
         UIManager.put("defaultFont", new Font("Segoe UI", Font.PLAIN, 16));
+
+        //Department updater
+        Thread departmentUpdater = new Thread(() -> {
+
+        });
 
         SwingUtilities.invokeLater(new Runnable() {
             @Override
@@ -170,7 +179,8 @@ public class MainManagerClient {
                                     }
                                     System.out.println("JSON: " + response.toString());
                                     if("ok".equals(response.get("status").getAsString())) {
-                                        boolean isLoggedIn = response.get("data").getAsBoolean();
+                                        JsonObject authData = response.getAsJsonObject("data");
+                                        boolean isLoggedIn = authData.get("isLoggedIn").getAsBoolean();
                                         if(isLoggedIn) {
                                             mainCardLayout.next(mainZone);
                                         }
@@ -207,12 +217,55 @@ public class MainManagerClient {
                 JPanel btnPanel = new JPanel();
                 btnPanel.setLayout(new BoxLayout(btnPanel, BoxLayout.X_AXIS));
                 JComboBox<Department> departmentList = new JComboBox<Department>();
+                //DataUpdater.updateDepartmentList(departmentList);
                 JButton importList = new JButton("Nhập danh sách đơn vị");
                 JButton exportList = new JButton("Xuất danh sách đơn vị");
                 JButton exportRequestList = new JButton("Xuất danh sách lượt tiếp công dân");
                 JButton addDepartment = new JButton("Thêm đơn vị");
                 JButton modifyDepartment = new JButton("Sửa thông tin đơn vị");
                 JButton deleteDepartment = new JButton("Xóa đơn vị");
+                departmentList.addItemListener(new ItemListener() {
+                    @Override
+                    public void itemStateChanged(ItemEvent e) {
+
+                    }
+                });
+                importList.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+
+                    }
+                });
+                exportList.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+
+                    }
+                });
+                exportRequestList.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+
+                    }
+                });
+                addDepartment.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+
+                    }
+                });
+                modifyDepartment.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+
+                    }
+                });
+                deleteDepartment.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+
+                    }
+                });
                 btnPanel.add(departmentList);
                 btnPanel.add(importList);
                 btnPanel.add(exportList);
@@ -244,16 +297,15 @@ public class MainManagerClient {
                 deptName.setFont(UIManager.getFont("defaultFont").deriveFont(Font.BOLD, 24));
                 deptName.setForeground(UIManager.getColor("Label.foreground"));
                 deptName.setAlignmentX(Component.CENTER_ALIGNMENT);
-                deptName.setText("Các ban quản lý dự án và các đơn vị sự nghiệp trực thuộc UBND xã");
                 deptInfoPanel.add(deptName);
                 JPanel deptDetailPanel = new JPanel();
                 GridBagLayout deptDetailPanelGbl = new GridBagLayout();
                 GridBagConstraints deptDetailPanelGbc = new GridBagConstraints();
                 deptDetailPanel.setLayout(deptDetailPanelGbl);
                 JLabel numOfProcessedRequest = new JLabel("Số lượt công dân đến làm thủ tục đã xử lý");
-                JLabel numOfProcessedRequestSrv = new JLabel("100");
+                JLabel numOfProcessedRequestSrv = new JLabel();
                 JLabel maxConcurrentRqInDay = new JLabel("Số lượt tiếp công dân tối đa trong ngày");
-                JLabel maxConcurrentRqInDaySrv = new JLabel("200");
+                JLabel maxConcurrentRqInDaySrv = new JLabel();
                 deptDetailPanelGbc.gridx = 0;
                 deptDetailPanelGbc.gridy = 0;
                 deptDetailPanelGbc.weightx = 0.8;
