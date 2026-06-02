@@ -1,8 +1,8 @@
 package org.example.manager_server.helper;
 
 import com.google.gson.*;
-import org.example.manager_client.helper.LoginHelper;
 import org.example.shared.model.Account;
+import org.example.shared.model.CitizenRequest;
 import org.example.shared.model.Department;
 
 import java.io.BufferedReader;
@@ -69,6 +69,80 @@ public class ClientHandler implements Runnable {
                     }
                     break;
 
+                case "GET_NEWEST_CITIZEN_REQUEST":
+                    Department dept = SQLHelper.getDepartment(UUID.fromString(requestData.get("data").getAsString()));
+                    if(dept != null) {
+                        CitizenRequest citizenRequest = SQLHelper.getNewestCtzRequest(dept);
+                        if(citizenRequest != null) {
+                            JsonElement ctzRequest = gson.toJsonTree(citizenRequest);
+                            response.addProperty("status", "ok");
+                            response.add("data", ctzRequest);
+                            response.addProperty("message", "Lấy thông tin đơn vị thành công");
+                        }
+                        else {
+                            response.addProperty("status", "error");
+                            response.addProperty("message", "Không có công dân nào đang chờ ở đơn vị này.");
+                        }
+                    }
+                    else {
+                        response.addProperty("status", "error");
+                        response.add("data", new JsonArray());
+                        response.addProperty("message", "Không tìm thấy đơn vị hoặc lỗi cơ sở dữ liệu");
+                    }
+                    break;
+
+                case "GET_ALL_REQUESTS_FROM_DEPARTMENT":
+                    List<CitizenRequest> requests = SQLHelper.getAllRequestsFromDept(UUID.fromString(requestData.get("data").getAsString()));
+                    if(requests != null) {
+                        JsonElement ctzRequestList = gson.toJsonTree(requests);
+                        response.addProperty("status", "ok");
+                        response.add("data", ctzRequestList);
+                        response.addProperty("message", "Đã lấy thành công danh sách lượt công dân thực hiện TTHC ở đơn vị.");
+                    }
+                    else {
+                        response.addProperty("status", "error");
+                        response.add("data", new JsonArray());
+                        response.addProperty("message", "Không lấy được danh sách do lỗi cơ sở dữ liệu.");
+                    }
+                    break;
+
+                case "GET_ALL_REQUESTS_IN_QUEUE":
+                    List<CitizenRequest> requestsInQueue = SQLHelper.getAllRequestsInQueue(UUID.fromString(requestData.get("data").getAsString()));
+                    if(requestsInQueue != null) {
+                        JsonElement ctzRequestList = gson.toJsonTree(requestsInQueue);
+                        response.addProperty("status", "ok");
+                        response.add("data", ctzRequestList);
+                        response.addProperty("message", "Đã lấy thành công danh sách lượt công dân thực hiện TTHC ở đơn vị.");
+                    }
+                    else {
+                        response.addProperty("status", "error");
+                        response.add("data", new JsonArray());
+                        response.addProperty("message", "Không lấy được danh sách do lỗi cơ sở dữ liệu.");
+                    }
+                    break;
+
+                case "GET_CITIZEN_REQUEST":
+                    CitizenRequest citizenRequest = SQLHelper.getCitizenRequest(UUID.fromString(requestData.get("data").getAsString()));
+                    if(citizenRequest != null) {
+                        JsonElement ctzRequest = gson.toJsonTree(citizenRequest);
+                        response.addProperty("status", "ok");
+                        response.add("data", ctzRequest);
+                        response.addProperty("message", "Lấy thông tin lượt làm việc thành công");
+                    }
+                    else {
+                        response.addProperty("status", "error");
+                        response.add("data", new JsonArray());
+                        response.addProperty("message", "Không tìm thấy lượt hoặc lỗi cơ sở dữ liệu");
+                    }
+                    break;
+
+                case "SET_REQUEST_STATUS":
+                    JsonObject ctzRequestData = requestData.get("data").getAsJsonObject();
+                    UUID requestId = UUID.fromString(ctzRequestData.get("requestId").getAsString());
+                    int requestStatus = ctzRequestData.get("status").getAsInt();
+                    SQLHelper.setRequestProcessStatus(requestId, requestStatus);
+                    break;
+
                 case "REQUEST_TICKET":
                     JsonObject data = requestData.getAsJsonObject("data");
                     String fullName = data.get("fullName").getAsString();
@@ -105,6 +179,22 @@ public class ClientHandler implements Runnable {
                         response.add("data", authData);
                     }
                     response.addProperty("message", "");
+                    break;
+
+                case "CHANGE_PASSWORD":
+                    JsonObject accountInfo = requestData.get("data").getAsJsonObject();
+                    String currentUsrName = accountInfo.get("account").getAsString();
+                    String newPwd = accountInfo.get("newPassword").getAsString();
+                    response.addProperty("action", "CHANGE_PASSWORD");
+                    boolean result = SQLHelper.changePassword(currentUsrName, newPwd);
+                    if(result) {
+                        response.addProperty("status", "ok");
+                        response.addProperty("message", "Đã đổi thành công mật khẩu của tài khoản " + currentUsrName + ".");
+                    }
+                    else {
+                        response.addProperty("status", "error");
+                        response.addProperty("message", "Tài khoản không tồn tại hoặc lỗi hệ thống.");
+                    }
                     break;
 
                 default:

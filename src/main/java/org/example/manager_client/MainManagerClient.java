@@ -4,13 +4,16 @@ import com.formdev.flatlaf.FlatLightLaf;
 import com.google.gson.JsonObject;
 import org.example.manager_client.helper.ClockPanel;
 import org.example.manager_client.helper.DataUpdater;
-import org.example.manager_client.helper.LoginHelper;
+import org.example.shared.helper.PwdHashHelper;
 import org.example.manager_client.helper.NetworkInitializer;
 import org.example.shared.helper.CustomSVGTranscoder;
+import org.example.shared.model.CitizenRequest;
 import org.example.shared.model.Department;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumnModel;
 import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
@@ -21,10 +24,51 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainManagerClient {
-    public static int currentInviteCount = 0;
-    public static DefaultComboBoxModel<Department> departmentListModel = new DefaultComboBoxModel<Department>();
+    private static final ExecutorService backgroundExecutor = Executors.newFixedThreadPool(3);
+    private static int currentInviteCount = 0;
+    private static JComboBox<Department> departmentList;
+    private static String userName;
+    private static final Map<Integer, JComponent[]> ROLE_PERMISSIONS = new HashMap<>();
+    private static JPanel dashboardPane;
+    private static JTextPane deptName;
+    private static JLabel numOfProcessedRequestSrv, maxConcurrentRqInDaySrv;
+    private static Department selectedDept;
+    private static JLabel requestNumber, fullNameSrv, nationalIdSrv;
+    public static CitizenRequest currentCtzRequest;
+    public static DefaultTableModel rqLogTm, rqQueueTm;
+    public static DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
+
+    //Department updater
+    private static final javax.swing.Timer departmentUpdaterTimer = new javax.swing.Timer(1000, new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            DataUpdater.updateDepartment(departmentList);
+        }
+    });
+
+    //Citizen's request updater
+    private static final javax.swing.Timer ctzRequestUpdaterTimer = new Timer(1000, new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            selectedDept = (Department)departmentList.getSelectedItem();
+            if(selectedDept != null) {
+                DataUpdater.updateRequest(selectedDept, requestNumber, fullNameSrv, nationalIdSrv);
+                DataUpdater.updateDataToQueue(rqQueueTm, selectedDept);
+                DataUpdater.updateDataToLog(rqLogTm, selectedDept);
+                numOfProcessedRequestSrv.setText(String.valueOf(selectedDept.getNumOfProcessedRequest()));
+                maxConcurrentRqInDaySrv.setText(String.valueOf(selectedDept.getMaxConcurrentRequestInDay()));
+            }
+        }
+    });
+
     public static void main(String[] args) {
         //FlatLaf
         System.setProperty("flatlaf.useWindowDecorations", "false");
@@ -35,11 +79,6 @@ public class MainManagerClient {
             System.err.println("Failed to initialize LaF");
         }
         UIManager.put("defaultFont", new Font("Segoe UI", Font.PLAIN, 16));
-
-        //Department updater
-        Thread departmentUpdater = new Thread(() -> {
-
-        });
 
         SwingUtilities.invokeLater(new Runnable() {
             @Override
@@ -60,7 +99,6 @@ public class MainManagerClient {
                     svnKelsonLight = svnKelsonLight.deriveFont(24f);
                 }
                 catch (FontFormatException | IOException e) {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
                 GraphicsEnvironment ge =
@@ -148,8 +186,7 @@ public class MainManagerClient {
                             JOptionPane.showMessageDialog(null, "Thông tin đăng nhập không được bỏ trống. Xin vui lòng kiểm tra lại.", "Không thực hiện được yêu cầu", JOptionPane.ERROR_MESSAGE);
                             return;
                         }
-                        String hashedPwd = LoginHelper.hashPwd(new String(pwdChars));
-                        JsonObject response = null;
+                        String hashedPwd = PwdHashHelper.hashPwd(new String(pwdChars));
                         JButton loginButton = (JButton)e.getSource();
                         loginButton.setEnabled(false);
                         loginButton.setText("Đang xử lý...");
@@ -177,12 +214,22 @@ public class MainManagerClient {
                                         JOptionPane.showMessageDialog(null, "Mất kết nối với máy chủ.", "Lỗi mạng", JOptionPane.ERROR_MESSAGE);
                                         return;
                                     }
-                                    System.out.println("JSON: " + response.toString());
+                                    System.out.println("JSON: " + response);
                                     if("ok".equals(response.get("status").getAsString())) {
                                         JsonObject authData = response.getAsJsonObject("data");
                                         boolean isLoggedIn = authData.get("isLoggedIn").getAsBoolean();
                                         if(isLoggedIn) {
+                                            int role = authData.get("role").getAsInt();
+                                            JComponent[] allowedJButton = ROLE_PERMISSIONS.get(role);
+                                            if(allowedJButton != null) {
+                                                for(JComponent button : allowedJButton) {
+                                                    button.setVisible(true);
+                                                }
+                                            }
+                                            MainManagerClient.userName = authData.get("userName").getAsString();
                                             mainCardLayout.next(mainZone);
+                                            departmentUpdaterTimer.start();
+                                            ctzRequestUpdaterTimer.start();
                                         }
                                         else {
                                             JOptionPane.showMessageDialog(null, "Thông tin đăng nhập không đúng hoặc tài khoản đang được sử dụng trên thiết bị khác. Vui lòng kiểm tra lại.", "Đăng nhập thất bại", JOptionPane.ERROR_MESSAGE);
@@ -208,7 +255,7 @@ public class MainManagerClient {
                 loginPane.add(Box.createVerticalGlue());
                 mainZone.add(loginPane);
 
-                JPanel dashboardPane = new JPanel();
+                dashboardPane = new JPanel();
                 dashboardPane.setLayout(new BorderLayout());
                 ClockPanel clock = new ClockPanel(dashboardPane, UIManager.getFont("defaultFont").deriveFont(Font.BOLD | Font.ITALIC));
                 clock.execute();
@@ -216,18 +263,24 @@ public class MainManagerClient {
                 //Button panel
                 JPanel btnPanel = new JPanel();
                 btnPanel.setLayout(new BoxLayout(btnPanel, BoxLayout.X_AXIS));
-                JComboBox<Department> departmentList = new JComboBox<Department>();
-                //DataUpdater.updateDepartmentList(departmentList);
+                departmentList = new JComboBox<Department>();
                 JButton importList = new JButton("Nhập danh sách đơn vị");
                 JButton exportList = new JButton("Xuất danh sách đơn vị");
-                JButton exportRequestList = new JButton("Xuất danh sách lượt tiếp công dân");
                 JButton addDepartment = new JButton("Thêm đơn vị");
-                JButton modifyDepartment = new JButton("Sửa thông tin đơn vị");
+                JButton departmentInfo = new JButton("Thông tin đơn vị");
                 JButton deleteDepartment = new JButton("Xóa đơn vị");
+                JButton changePwd = new JButton("Đổi mật khẩu");
+                JButton logout = new JButton("Đăng xuất");
+                ROLE_PERMISSIONS.put(0, new JComponent[]{importList, exportList, addDepartment, deleteDepartment});
                 departmentList.addItemListener(new ItemListener() {
                     @Override
                     public void itemStateChanged(ItemEvent e) {
-
+                        if(e.getStateChange() == ItemEvent.SELECTED) {
+                            selectedDept = (Department)e.getItem();
+                            if(selectedDept != null) {
+                                deptName.setText(selectedDept.getDepartmentName());
+                            }
+                        }
                     }
                 });
                 importList.addActionListener(new ActionListener() {
@@ -242,19 +295,13 @@ public class MainManagerClient {
 
                     }
                 });
-                exportRequestList.addActionListener(new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-
-                    }
-                });
                 addDepartment.addActionListener(new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent e) {
 
                     }
                 });
-                modifyDepartment.addActionListener(new ActionListener() {
+                departmentInfo.addActionListener(new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent e) {
 
@@ -266,13 +313,74 @@ public class MainManagerClient {
 
                     }
                 });
+                changePwd.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        JDialog changePwdDialog = new JDialog(mainWindow, "Đổi mật khẩu", false);
+                        JPanel changePwdPanel = (JPanel)changePwdDialog.getContentPane();
+                        changePwdPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+                        changePwdPanel.setLayout(new BoxLayout(changePwdPanel, BoxLayout.Y_AXIS));
+                        JPanel fieldWrapper = new JPanel();
+                        fieldWrapper.setLayout(new GridLayout(3, 2, 30, 10));
+                        JLabel accName = new JLabel("Tên tài khoản");
+                        fieldWrapper.add(accName);
+                        JTextField accNameSrv = new JTextField(userName);
+                        fieldWrapper.add(accNameSrv);
+                        JLabel newPwd = new JLabel("Mật khẩu mới");
+                        fieldWrapper.add(newPwd);
+                        JPasswordField newPwdInput = new JPasswordField();
+                        fieldWrapper.add(newPwdInput);
+                        JLabel retypePwd = new JLabel("Nhập lại mật khẩu mới");
+                        fieldWrapper.add(retypePwd);
+                        JPasswordField retypePwdInput = new JPasswordField();
+                        fieldWrapper.add(retypePwdInput);
+                        changePwdPanel.add(fieldWrapper);
+                        changePwdPanel.add(Box.createVerticalStrut(20));
+                        JPanel btnWrapper = new JPanel();
+                        btnWrapper.setLayout(new BoxLayout(btnWrapper, BoxLayout.X_AXIS));
+                        JButton ok = new JButton("OK");
+                        JButton cancel = new JButton("Hủy bỏ");
+                        btnWrapper.add(ok);
+                        btnWrapper.add(Box.createHorizontalStrut(20));
+                        btnWrapper.add(cancel);
+                        changePwdPanel.add(btnWrapper);
+                        ok.addActionListener(new ActionListener() {
+                            @Override
+                            public void actionPerformed(ActionEvent e) {
+                                ok.setEnabled(false);
+                                DataUpdater.changePassword(changePwdDialog, accNameSrv.getText(), new String(newPwdInput.getPassword()), new String(retypePwdInput.getPassword()));
+                                changePwdDialog.dispose();
+                            }
+                        });
+                        cancel.addActionListener(new ActionListener() {
+                            @Override
+                            public void actionPerformed(ActionEvent e) {
+                                changePwdDialog.dispose();
+                            }
+                        });
+                        changePwdDialog.pack();
+                        changePwdDialog.setLocationRelativeTo(mainWindow);
+                        changePwdDialog.setVisible(true);
+                    }
+                });
+                logout.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+
+                    }
+                });
                 btnPanel.add(departmentList);
                 btnPanel.add(importList);
                 btnPanel.add(exportList);
-                btnPanel.add(exportRequestList);
                 btnPanel.add(addDepartment);
-                btnPanel.add(modifyDepartment);
+                btnPanel.add(departmentInfo);
                 btnPanel.add(deleteDepartment);
+                btnPanel.add(changePwd);
+                btnPanel.add(logout);
+                importList.setVisible(false);
+                exportList.setVisible(false);
+                addDepartment.setVisible(false);
+                deleteDepartment.setVisible(false);
                 dashboardPane.add(btnPanel, BorderLayout.NORTH);
 
                 //Department information and statisitcs panel
@@ -282,10 +390,10 @@ public class MainManagerClient {
                 JPanel deptInfoPanel = new JPanel();
                 deptInfoPanel.setLayout(new BoxLayout(deptInfoPanel, BoxLayout.Y_AXIS));
                 deptInfoPanel.setBorder(BorderFactory.createTitledBorder("Thông tin đơn vị"));
-                deptInfoPanel.setPreferredSize(new Dimension(400, 300));
+                deptInfoPanel.setPreferredSize(new Dimension(400, 250));
                 deptInfoPanel.setMaximumSize(deptInfoPanel.getPreferredSize());
                 deptInfoPanel.add(Box.createVerticalStrut(30));
-                JTextPane deptName = new JTextPane();
+                deptName = new JTextPane();
                 SimpleAttributeSet deptName_sas = new SimpleAttributeSet();
                 StyleConstants.setAlignment(deptName_sas, StyleConstants.ALIGN_CENTER);
                 StyledDocument deptName_doc = deptName.getStyledDocument();
@@ -303,9 +411,9 @@ public class MainManagerClient {
                 GridBagConstraints deptDetailPanelGbc = new GridBagConstraints();
                 deptDetailPanel.setLayout(deptDetailPanelGbl);
                 JLabel numOfProcessedRequest = new JLabel("Số lượt công dân đến làm thủ tục đã xử lý");
-                JLabel numOfProcessedRequestSrv = new JLabel();
+                numOfProcessedRequestSrv = new JLabel();
                 JLabel maxConcurrentRqInDay = new JLabel("Số lượt tiếp công dân tối đa trong ngày");
-                JLabel maxConcurrentRqInDaySrv = new JLabel();
+                maxConcurrentRqInDaySrv = new JLabel();
                 deptDetailPanelGbc.gridx = 0;
                 deptDetailPanelGbc.gridy = 0;
                 deptDetailPanelGbc.weightx = 0.8;
@@ -336,7 +444,7 @@ public class MainManagerClient {
                 ctzRequestPanel.setLayout(new BoxLayout(ctzRequestPanel, BoxLayout.Y_AXIS));
                 ctzRequestPanel.setBorder(BorderFactory.createTitledBorder("Lượt hiện tại"));
                 ctzRequestPanel.add(Box.createVerticalStrut(50));
-                JLabel requestNumber = new JLabel("123");
+                requestNumber = new JLabel();
                 requestNumber.setAlignmentX(Container.CENTER_ALIGNMENT);
                 requestNumber.setFont(UIManager.getFont("defaultFont").deriveFont(Font.BOLD, 36));
                 requestNumber.setMaximumSize(new Dimension(Integer.MAX_VALUE, requestNumber.getPreferredSize().height));
@@ -350,7 +458,7 @@ public class MainManagerClient {
                 fullName.setHorizontalAlignment(SwingConstants.LEFT);
                 ctzRequestPanel.add(fullName);
                 ctzRequestPanel.add(Box.createVerticalStrut(5));
-                JLabel fullNameSrv = new JLabel("Nguyễn Văn A");
+                fullNameSrv = new JLabel();
                 fullNameSrv.setAlignmentX(Component.CENTER_ALIGNMENT);
                 fullNameSrv.setFont(UIManager.getFont("defaultFont").deriveFont(Font.BOLD));
                 fullNameSrv.setMaximumSize(new Dimension(Integer.MAX_VALUE, fullNameSrv.getPreferredSize().height));
@@ -364,7 +472,7 @@ public class MainManagerClient {
                 nationalId.setHorizontalAlignment(SwingConstants.LEFT);
                 ctzRequestPanel.add(nationalId);
                 ctzRequestPanel.add(Box.createVerticalStrut(5));
-                JLabel nationalIdSrv = new JLabel("000000000000");
+                nationalIdSrv = new JLabel();
                 nationalIdSrv.setAlignmentX(Component.CENTER_ALIGNMENT);
                 nationalIdSrv.setFont(UIManager.getFont("defaultFont").deriveFont(Font.BOLD));
                 nationalIdSrv.setMaximumSize(new Dimension(Integer.MAX_VALUE, nationalIdSrv.getPreferredSize().height));
@@ -388,7 +496,9 @@ public class MainManagerClient {
                     @Override
                     public void actionPerformed(ActionEvent e) {
                         if(currentInviteCount < 3) {
-                            //TODO: Add actual invite logic
+                            System.out.println("Xin mời công dân " + currentCtzRequest.getFullName() + ", số thứ tự "
+                                + currentCtzRequest.getRequestNumber() + " đến thực hiện thủ tục.");
+                            //TODO: Replace console output by TTS
                             currentInviteCount++;
                         }
                         else {
@@ -399,14 +509,18 @@ public class MainManagerClient {
                 confirmRequest.addActionListener(new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent e) {
-                        //TODO: Add actual confirmation logic
+                        backgroundExecutor.submit(() -> {
+                            DataUpdater.confirmAdmittedRequest(currentCtzRequest);
+                        });
                     }
                 });
                 confirmCancelRq.addActionListener(new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent e) {
-                        //TODO: Add actual logic
                         currentInviteCount = 0;
+                        backgroundExecutor.submit(() -> {
+                            DataUpdater.confirmCancelledRequest(currentCtzRequest);
+                        });
                         btnWrapperLayout.show(buttonWrapper, "INVITE");
                     }
                 });
@@ -427,6 +541,44 @@ public class MainManagerClient {
                 rqQueueDisplay.setBorder(BorderFactory.createTitledBorder("Hàng đợi"));
                 rqQueueDisplay.setLayout(new BorderLayout());
 
+                String[] rqQueueTableColumnNames = {"STT", "Thời gian"};
+                rqQueueTm = new DefaultTableModel(rqQueueTableColumnNames, 0) {
+                    @Override
+                    public boolean isCellEditable(int row, int col) {
+                        return false;
+                    }
+                    @Override
+                    public Class<?> getColumnClass(int col) {
+                        if(col == 0) return Integer.class;
+                        if(col == 1) return LocalDateTime.class;
+                        return String.class;
+                    }
+                };
+                JTable rqQueueTable = new JTable(rqQueueTm);
+                rqQueueTable.setAutoCreateRowSorter(true);
+                rqQueueTable.setFocusable(false);
+                rqQueueTable.setRowSelectionAllowed(false);
+                rqQueueTable.setCellSelectionEnabled(false);
+                rqQueueTable.setRowHeight(25);
+                rqQueueTable.getTableHeader().setFont(UIManager.getFont("defaultFont").deriveFont(Font.BOLD));
+                TableColumnModel rqQueueTblCm = rqQueueTable.getColumnModel();
+                rqQueueTblCm.getColumn(1).setCellRenderer(new DefaultTableCellRenderer() {
+                    @Override
+                    protected void setValue(Object val) {
+                        if(val instanceof LocalDateTime) {
+                            setText(((LocalDateTime)val).format(formatter));
+                        }
+                        else {
+                            super.setValue(val);
+                        }
+                    }
+                });
+                rqQueueTblCm.getColumn(0).setMinWidth(50);
+                rqQueueTblCm.getColumn(0).setPreferredWidth(50);
+                rqQueueTblCm.getColumn(0).setMaxWidth(50);
+
+                JScrollPane rqQueueScrPane = new JScrollPane(rqQueueTable);
+                rqQueueDisplay.add(rqQueueScrPane, BorderLayout.CENTER);
                 ctzRequestWrapperPanel.add(rqQueueDisplay);
                 dashboardPane.add(ctzRequestWrapperPanel, BorderLayout.EAST);
 
@@ -435,6 +587,40 @@ public class MainManagerClient {
                 rqLogDisplay.setBorder(BorderFactory.createTitledBorder("Nhật ký tiếp công dân"));
                 rqLogDisplay.setLayout(new BorderLayout());
 
+                String[] rqLogTableColumnNames = {"Thời gian", "Họ và tên", "Số ĐDCN", "STT", "Trạng thái"};
+                rqLogTm = new DefaultTableModel(rqLogTableColumnNames, 0) {
+                    @Override
+                    public boolean isCellEditable(int row, int col) {
+                        return false;
+                    }
+                    @Override
+                    public Class<?> getColumnClass(int col) {
+                        if(col == 0) return LocalDateTime.class;
+                        if(col == 3) return Integer.class;
+                        return String.class;
+                    }
+                };
+                JTable rqLogTable = new JTable(rqLogTm);
+                TableColumnModel rqLogTblCm = rqLogTable.getColumnModel();
+                rqLogTable.setFocusable(false);
+                rqLogTable.setRowSelectionAllowed(false);
+                rqLogTable.setCellSelectionEnabled(false);
+                rqLogTable.setAutoCreateRowSorter(true);
+                rqLogTable.setRowHeight(25);
+                rqLogTable.getTableHeader().setFont(UIManager.getFont("defaultFont").deriveFont(Font.BOLD));
+                rqLogTblCm.getColumn(0).setCellRenderer(new DefaultTableCellRenderer() {
+                    @Override
+                    protected void setValue(Object val) {
+                        if(val instanceof LocalDateTime) {
+                            setText(((LocalDateTime)val).format(formatter));
+                        }
+                        else {
+                            super.setValue(val);
+                        }
+                    }
+                });
+                JScrollPane rqLogScrPane = new JScrollPane(rqLogTable);
+                rqLogDisplay.add(rqLogScrPane, BorderLayout.CENTER);
                 dashboardPane.add(rqLogDisplay, BorderLayout.CENTER);
                 mainZone.add(dashboardPane);
             }

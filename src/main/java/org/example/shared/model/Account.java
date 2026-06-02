@@ -14,7 +14,6 @@ public class Account {
     @Id
     private String userName;
     private String hashedPwd;
-    private List<UUID> departments;
     private int role;
     private boolean isLoggedIn;
 
@@ -22,7 +21,6 @@ public class Account {
         this.userName = userName;
         this.hashedPwd = hashedPwd;
         this.role = role;
-        this.departments = new ArrayList<>();
         this.isLoggedIn = false;
     }
 
@@ -52,10 +50,6 @@ public class Account {
 
     public void setRole(int role) {
         this.role = role;
-    }
-
-    public List<UUID> getDepartments() {
-        return departments;
     }
 
     public boolean getLoginStatus() {

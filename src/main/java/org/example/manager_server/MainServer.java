@@ -1,7 +1,5 @@
 package org.example.manager_server;
 
-import org.example.manager_client.helper.LoginHelper;
-import org.example.manager_server.helper.SQLHelper;
 import org.example.manager_server.helper.ServerInitializer;
 
 public class MainServer {

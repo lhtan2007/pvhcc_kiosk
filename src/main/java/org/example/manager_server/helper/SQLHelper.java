@@ -1,5 +1,6 @@
 package org.example.manager_server.helper;
 
+import org.example.shared.helper.PwdHashHelper;
 import org.example.shared.model.Account;
 import org.example.shared.model.CitizenRequest;
 import org.example.shared.model.Department;
@@ -9,6 +10,8 @@ import org.hibernate.Transaction;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.query.Query;
 
+import java.sql.SQLDataException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -37,6 +40,19 @@ public class SQLHelper {
             return null;
         }
     }
+
+    public static Department getDepartment(UUID departmentId) {
+        try(Session session = sessionFactory.openSession()) {
+            Query<Department> departmentQuery = session.createQuery("FROM Department WHERE departmentId = :departmentId", Department.class);
+            departmentQuery.setParameter("departmentId", departmentId);
+            return departmentQuery.getSingleResultOrNull();
+        }
+        catch(Exception e) {
+            System.err.println("Có lỗi khi lấy thông tin đơn vị: " + e.getMessage());
+            return null;
+        }
+    }
+
     public static boolean addDepartment(String departmentName, int numOfProcessedRequest, int maxConcurrentRequestInDay) {
         boolean isCompleted = false;
         try(Session session = sessionFactory.openSession()) {
@@ -58,6 +74,87 @@ public class SQLHelper {
             e.printStackTrace();
         }
         return isCompleted;
+    }
+
+    public static CitizenRequest getNewestCtzRequest(Department dept) {
+        try(Session session = sessionFactory.openSession()) {
+            Query<CitizenRequest> requestQuery = session.createQuery(
+                    "FROM CitizenRequest WHERE departmentId = :departmentId " +
+                            "AND requestDate >= :requestDate AND processStatus = 0" +
+                            "ORDER BY requestDate ASC",
+                    CitizenRequest.class);
+            requestQuery.setParameter("departmentId", dept.getDepartmentId());
+            requestQuery.setParameter("requestDate", LocalDate.now().atStartOfDay());
+            requestQuery.setMaxResults(1);
+            return requestQuery.getSingleResultOrNull();
+        }
+        catch(Exception e) {
+            System.err.println("Đã có lỗi xảy ra khi lấy yêu cầu gần nhất: " + e.getMessage());
+            return null;
+        }
+    }
+
+    public static List<CitizenRequest> getAllRequestsInQueue(UUID deptId) {
+        try(Session session = sessionFactory.openSession()) {
+            Query<CitizenRequest> requestListQuery = session.createQuery("FROM CitizenRequest WHERE departmentId = :departmentId " +
+                            "AND requestDate >= :requestDate AND processStatus = 0" +
+                            "ORDER BY requestDate ASC",
+                    CitizenRequest.class);
+            requestListQuery.setParameter("departmentId", deptId);
+            requestListQuery.setParameter("requestDate", LocalDate.now().atStartOfDay());
+            return requestListQuery.list();
+        }
+        catch(Exception e) {
+            System.err.println("Đã có lỗi xảy ra khi lấy yêu cầu gần nhất: " + e.getMessage());
+            return null;
+        }
+    }
+
+    public static CitizenRequest getCitizenRequest(UUID requestId) {
+        try(Session session = sessionFactory.openSession()) {
+            Query<CitizenRequest> requestQuery = session.createQuery("FROM CitizenRequest WHERE requestId = :Id", CitizenRequest.class);
+            requestQuery.setParameter("Id", requestId);
+            return requestQuery.getSingleResultOrNull();
+        }
+        catch(Exception e) {
+            System.err.println("Có lỗi khi lấy thông tin lượt công dân đến làm việc: " + e.getMessage());
+            return null;
+        }
+    }
+
+    public static void setRequestProcessStatus(UUID requestId, int status) {
+        Transaction tx = null;
+        try(Session session = sessionFactory.openSession()) {
+            tx = session.beginTransaction();
+            Query<CitizenRequest> requestQuery = session.createQuery("FROM CitizenRequest WHERE requestId = :Id", CitizenRequest.class);
+            requestQuery.setParameter("Id", requestId);
+            CitizenRequest request = requestQuery.getSingleResultOrNull();
+            if(request != null) {
+                request.setProcessStatus(status);
+                session.merge(request);
+                tx.commit();
+            }
+            else {
+                throw new SQLDataException();
+            }
+        }
+        catch(Exception e) {
+            if(tx != null) tx.rollback();
+            System.err.println("Đã có lỗi xảy ra khi xử lý yêu cầu: " + e.getMessage());
+        }
+    }
+
+    public static List<CitizenRequest> getAllRequestsFromDept(UUID departmentId) {
+        List<CitizenRequest> requestList = null;
+        try(Session session = sessionFactory.openSession()) {
+            Query<CitizenRequest> requestQuery = session.createQuery("FROM CitizenRequest WHERE departmentId = :Id ORDER BY requestDate DESC", CitizenRequest.class);
+            requestQuery.setParameter("Id", departmentId);
+            requestList = requestQuery.list();
+        }
+        catch(Exception e) {
+            System.err.println("Đã có lỗi xảy ra khi đọc danh sách lượt công dân đến làm việc: " + e.getMessage());
+        }
+        return requestList;
     }
 
     public static int getTicketNumber(String fullName, String nationalId, LocalDateTime requestDate, UUID departmentId) {
@@ -126,6 +223,29 @@ public class SQLHelper {
             e.printStackTrace();
         }
         return acc;
+    }
+
+    public static boolean changePassword(String userName, String newPwd) {
+        Transaction tx = null;
+        Account currentAcc = getAccounts(userName);
+        try(Session session = sessionFactory.openSession()) {
+            tx = session.beginTransaction();
+            if(currentAcc != null) {
+                currentAcc.setHashedPwd(PwdHashHelper.hashPwd(newPwd));
+                session.merge(currentAcc);
+                tx.commit();
+                return true;
+            }
+            else {
+                tx.commit();
+                return false;
+            }
+        }
+        catch(Exception e) {
+            if(tx != null) tx.rollback();
+            e.printStackTrace();
+            return false;
+        }
     }
 
     public static boolean createAccount(String usrName, String hashedPwd, int role) {

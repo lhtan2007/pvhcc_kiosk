@@ -1,9 +1,9 @@
-package org.example.manager_client.helper;
+package org.example.shared.helper;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-public class LoginHelper {
+public class PwdHashHelper {
     public static String hashPwd(String original_pwd) {
         StringBuilder encrypted_pwd;
         try {
