@@ -248,6 +248,25 @@ public class SQLHelper {
         }
     }
 
+    public static boolean setLoginStatus(Account currentAccount, boolean status) {
+        boolean isCompleted = false;
+        Transaction tx = null;
+        try(Session session = sessionFactory.openSession()) {
+            tx = session.beginTransaction();
+            if(currentAccount != null) {
+                currentAccount.setLoginStatus(status);
+                session.merge(currentAccount);
+                isCompleted = true;
+            }
+            tx.commit();
+        }
+        catch(Exception e) {
+            if(tx != null) tx.rollback();
+            e.printStackTrace();
+        }
+        return isCompleted;
+    }
+
     public static boolean createAccount(String usrName, String hashedPwd, int role) {
         boolean isCompleted = false;
         Transaction tx = null;

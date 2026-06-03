@@ -166,17 +166,32 @@ public class ClientHandler implements Runnable {
                     response.addProperty("action", "LOGIN");
                     response.addProperty("status", "ok");
                     if(acc != null && !acc.getLoginStatus() && acc.getHashedPwd().equals(hashedPwd)) {
+                        SQLHelper.setLoginStatus(acc, true);
                         JsonObject authData = new JsonObject();
                         authData.addProperty("isLoggedIn", true);
                         authData.addProperty("userName", acc.getUserName());
                         authData.addProperty("role", acc.getRole());
                         response.add("data", authData);
-                        acc.setLoginStatus(true);
                     }
                     else {
                         JsonObject authData = new JsonObject();
                         authData.addProperty("isLoggedIn", false);
                         response.add("data", authData);
+                    }
+                    response.addProperty("message", "");
+                    break;
+
+                case "LOGOUT":
+                    String user = requestData.get("data").getAsString();
+                    Account acc1 = SQLHelper.getAccounts(user);
+                    response.addProperty("action", "LOGOUT");
+                    response.addProperty("status", "ok");
+                    if(acc1 != null && acc1.getLoginStatus()) {
+                        response.addProperty("data", true);
+                        SQLHelper.setLoginStatus(acc1, false);
+                    }
+                    else {
+                        response.addProperty("data", false);
                     }
                     response.addProperty("message", "");
                     break;

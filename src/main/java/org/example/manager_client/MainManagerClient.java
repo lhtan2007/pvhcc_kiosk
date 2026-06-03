@@ -18,10 +18,7 @@ import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
+import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -110,7 +107,49 @@ public class MainManagerClient {
                 //Main window
                 JFrame mainWindow = new JFrame("Hệ thống quản lý công tác tiếp công dân thực hiện TTHC");
                 mainWindow.setVisible(true);
-                mainWindow.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+                mainWindow.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+                mainWindow.addWindowListener(new WindowAdapter() {
+                    @Override
+                    public void windowClosing(WindowEvent e) {
+                        SwingWorker<JsonObject, Void> logoutWorker = new SwingWorker<JsonObject, Void>() {
+                            @Override
+                            protected JsonObject doInBackground() throws Exception {
+                                JsonObject logoutRequest = new JsonObject();
+                                logoutRequest.addProperty("clientType", "manager");
+                                logoutRequest.addProperty("action", "LOGOUT");
+                                logoutRequest.addProperty("data", userName);
+                                return NetworkInitializer.getInstance().sendRequest(logoutRequest);
+                            }
+                            @Override
+                            protected void done() {
+                                try {
+                                    JsonObject response = get();
+                                    if(response == null) {
+                                        JOptionPane.showMessageDialog(null, "Mất kết nối với máy chủ.", "Lỗi mạng", JOptionPane.ERROR_MESSAGE);
+                                        return;
+                                    }
+                                    System.out.println("JSON: " + response);
+                                    if("ok".equals(response.get("status").getAsString())) {
+                                        boolean isLoggedOut = response.get("data").getAsBoolean();
+                                        if(isLoggedOut) {
+                                            mainWindow.dispose();
+                                            System.exit(0);
+                                        }
+                                    }
+                                    else {
+                                        String error = response.get("message").getAsString();
+                                        JOptionPane.showMessageDialog(null, "Lỗi hệ thống: " + error, "Thất bại", JOptionPane.ERROR_MESSAGE);
+                                    }
+                                }
+                                catch(Exception e) {
+                                    e.printStackTrace();
+                                    JOptionPane.showMessageDialog(null, "Lỗi trong quá trình xử lý: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                                }
+                            }
+                        };
+                        logoutWorker.execute();
+                    }
+                });
                 JPanel mainPane = (JPanel)mainWindow.getContentPane();
                 mainPane.setPreferredSize(new Dimension(1280, 720));
                 mainWindow.setMinimumSize(mainWindow.getPreferredSize());
@@ -366,7 +405,44 @@ public class MainManagerClient {
                 logout.addActionListener(new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent e) {
-
+                        logout.setEnabled(false);
+                        SwingWorker<JsonObject, Void> logoutWorker = new SwingWorker<JsonObject, Void>() {
+                            @Override
+                            protected JsonObject doInBackground() throws Exception {
+                                JsonObject logoutRequest = new JsonObject();
+                                logoutRequest.addProperty("clientType", "manager");
+                                logoutRequest.addProperty("action", "LOGOUT");
+                                logoutRequest.addProperty("data", userName);
+                                return NetworkInitializer.getInstance().sendRequest(logoutRequest);
+                            }
+                            @Override
+                            protected void done() {
+                                try {
+                                    JsonObject response = get();
+                                    if(response == null) {
+                                        JOptionPane.showMessageDialog(null, "Mất kết nối với máy chủ.", "Lỗi mạng", JOptionPane.ERROR_MESSAGE);
+                                        return;
+                                    }
+                                    System.out.println("JSON: " + response);
+                                    if("ok".equals(response.get("status").getAsString())) {
+                                        boolean isLoggedOut = response.get("data").getAsBoolean();
+                                        if(isLoggedOut) {
+                                            mainCardLayout.next(mainZone);
+                                            logout.setEnabled(true);
+                                        }
+                                    }
+                                    else {
+                                        String error = response.get("message").getAsString();
+                                        JOptionPane.showMessageDialog(null, "Lỗi hệ thống: " + error, "Thất bại", JOptionPane.ERROR_MESSAGE);
+                                    }
+                                }
+                                catch(Exception e) {
+                                    e.printStackTrace();
+                                    JOptionPane.showMessageDialog(null, "Lỗi trong quá trình xử lý: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                                }
+                            }
+                        };
+                        logoutWorker.execute();
                     }
                 });
                 btnPanel.add(departmentList);
