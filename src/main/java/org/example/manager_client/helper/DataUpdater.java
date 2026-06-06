@@ -252,4 +252,36 @@ public class DataUpdater {
             }
         }
     }
+
+    public static void addDepartment(JDialog dialog, String deptName, int maxConcurrentCtz) {
+        if(deptName.isEmpty()) {
+            JOptionPane.showMessageDialog(dialog, "Tên đơn vị không thể bỏ trống. Vui lòng kiểm tra lại.", "Không thể thêm đơn vị", JOptionPane.ERROR_MESSAGE);
+        }
+        else if(maxConcurrentCtz == 0) {
+            JOptionPane.showMessageDialog(dialog, "Số lượt tiếp công dân phải là số nguyên lớn hơn 0. Vui lòng kiểm tra lại.", "Không thể thêm đơn vị", JOptionPane.ERROR_MESSAGE);
+        }
+        else {
+            JsonObject request = new JsonObject();
+            request.addProperty("clientType", "manager");
+            request.addProperty("action", "ADD_DEPARTMENT");
+            JsonObject departmentData = new JsonObject();
+            departmentData.addProperty("deptName", deptName);
+            departmentData.addProperty("maxConcurrentCtz", maxConcurrentCtz);
+            request.add("data", departmentData);
+            JsonObject response = NetworkInitializer.getInstance().sendRequest(request);
+            if(response != null) {
+                String res = response.get("status").getAsString();
+                String msg = response.get("message").getAsString();
+                if(res.equals("ok")) {
+                    JOptionPane.showMessageDialog(dialog, msg, "Thêm đơn vị thành công", JOptionPane.INFORMATION_MESSAGE);
+                }
+                else {
+                    JOptionPane.showMessageDialog(dialog, msg, "Không thể thêm đơn vị", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+            else {
+                JOptionPane.showMessageDialog(dialog, "Lỗi kết nối. Vui lòng kiểm tra lại.", "Không thể thêm đơn vị", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
 }

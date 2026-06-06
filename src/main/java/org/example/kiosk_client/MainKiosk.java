@@ -14,6 +14,8 @@ import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
 
@@ -188,40 +190,72 @@ public class MainKiosk {
                 departmentScrPane.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
                 generalPane.add(departmentScrPane);
 
-                SwingWorker<java.util.List<Department>, Void> departmentListWorker = new SwingWorker<java.util.List<Department>, Void>() {
+                final java.util.List<Department> currentDisplayedDepartments = new java.util.ArrayList<>();
+
+                Timer departmentListTimer = new Timer(1000, new ActionListener() {
                     @Override
-                    protected java.util.List<Department> doInBackground() throws Exception {
-                        return DepartmentHelper.fetchDepartmentList();
-                    }
-                    @Override
-                    protected void done() {
-                        try {
-                            java.util.List<Department> remoteDepartments = get();
-                            departmentListPanel.removeAll();
-                            if (remoteDepartments != null && !remoteDepartments.isEmpty()) {
-                                for (Department dept : remoteDepartments) {
-                                    DepartmentView deptView = new DepartmentView(dept);
-                                    deptView.setFocusable(false);
-                                    new DepartmentController(citizenFullNameInput, citizenNationalIdInput, deptView);
-                                    departmentListPanel.add(deptView);
+                    public void actionPerformed(ActionEvent e) {
+                        SwingWorker<java.util.List<Department>, Void> departmentListWorker = new SwingWorker<java.util.List<Department>, Void>() {
+                            @Override
+                            protected java.util.List<Department> doInBackground() throws Exception {
+                                return DepartmentHelper.fetchDepartmentList();
+                            }
+                            @Override
+                            protected void done() {
+                                try {
+                                    java.util.List<Department> remoteDepartments = get();
+                                    if (remoteDepartments == null || remoteDepartments.isEmpty()) {
+                                        if (currentDisplayedDepartments.size() != 0) {
+                                            departmentListPanel.removeAll();
+                                            JLabel errorLabel = new JLabel("Không thể tải danh sách. Vui lòng thử lại sau.");
+                                            errorLabel.setHorizontalAlignment(SwingConstants.CENTER);
+                                            errorLabel.setForeground(Color.RED);
+                                            departmentListPanel.add(errorLabel);
+                                            departmentListPanel.revalidate();
+                                            departmentListPanel.repaint();
+                                            currentDisplayedDepartments.clear();
+                                        }
+                                        return;
+                                    }
+                                    boolean isChanged = false;
+                                    if(currentDisplayedDepartments.size() != remoteDepartments.size()) {
+                                        isChanged = true;
+                                    }
+                                    else {
+                                        for (int i = 0; i < remoteDepartments.size(); i++) {
+                                            String currentId = currentDisplayedDepartments.get(i).getDepartmentId().toString();
+                                            String remoteId = remoteDepartments.get(i).getDepartmentId().toString();
+                                            if (!currentId.equals(remoteId)) {
+                                                isChanged = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if(isChanged) {
+                                        departmentListPanel.removeAll();
+                                        for (Department dept : remoteDepartments) {
+                                            DepartmentView deptView = new DepartmentView(dept);
+                                            deptView.setFocusable(false);
+                                            new DepartmentController(citizenFullNameInput, citizenNationalIdInput, deptView);
+                                            departmentListPanel.add(deptView);
+                                        }
+                                        departmentListPanel.revalidate();
+                                        departmentListPanel.repaint();
+                                        currentDisplayedDepartments.clear();
+                                        currentDisplayedDepartments.addAll(remoteDepartments);
+                                    }
+                                }
+                                catch(Exception ex) {
+                                    System.err.println("Lỗi đồng bộ giao diện Kiosk: " + ex.getMessage());
                                 }
                             }
-                            else {
-                                JLabel errorLabel = new JLabel("Không thể tải danh sách. Vui lòng thử lại sau.");
-                                errorLabel.setHorizontalAlignment(SwingConstants.CENTER);
-                                errorLabel.setForeground(Color.RED);
-                                departmentListPanel.add(errorLabel);
-                            }
-                            departmentListPanel.revalidate();
-                            departmentListPanel.repaint();
-
-                        }
-                        catch(Exception ex) {
-                            ex.printStackTrace();
-                        }
+                        };
+                        departmentListWorker.execute();
                     }
-                };
-                departmentListWorker.execute();
+                });
+
+                departmentListTimer.setRepeats(true);
+                departmentListTimer.start();
 
                 //Safely shutdown
                 Runtime.getRuntime().addShutdownHook(new Thread(() -> {

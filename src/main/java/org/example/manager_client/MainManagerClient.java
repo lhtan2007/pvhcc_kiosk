@@ -111,6 +111,12 @@ public class MainManagerClient {
                 mainWindow.addWindowListener(new WindowAdapter() {
                     @Override
                     public void windowClosing(WindowEvent e) {
+                        if (userName == null || userName.trim().isEmpty()) {
+                            mainWindow.dispose();
+                            System.exit(0);
+                            return;
+                        }
+                        mainWindow.setEnabled(false);
                         SwingWorker<JsonObject, Void> logoutWorker = new SwingWorker<JsonObject, Void>() {
                             @Override
                             protected JsonObject doInBackground() throws Exception {
@@ -128,8 +134,11 @@ public class MainManagerClient {
                                         JOptionPane.showMessageDialog(null, "Mất kết nối với máy chủ.", "Lỗi mạng", JOptionPane.ERROR_MESSAGE);
                                         return;
                                     }
-                                    System.out.println("JSON: " + response);
-                                    if("ok".equals(response.get("status").getAsString())) {
+                                    if("error".equals(response.get("status").getAsString())) {
+                                        mainWindow.dispose();
+                                        System.exit(0);
+                                    }
+                                    else if("ok".equals(response.get("status").getAsString())) {
                                         boolean isLoggedOut = response.get("data").getAsBoolean();
                                         if(isLoggedOut) {
                                             mainWindow.dispose();
@@ -144,6 +153,10 @@ public class MainManagerClient {
                                 catch(Exception e) {
                                     e.printStackTrace();
                                     JOptionPane.showMessageDialog(null, "Lỗi trong quá trình xử lý: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                                }
+                                finally {
+                                    mainWindow.dispose();
+                                    System.exit(0);
                                 }
                             }
                         };
@@ -337,13 +350,93 @@ public class MainManagerClient {
                 addDepartment.addActionListener(new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent e) {
-
+                        JDialog addDepartmentDialog = new JDialog(mainWindow, "Thêm đơn vị", false);
+                        JPanel addDepartmentPanel = (JPanel) addDepartmentDialog.getContentPane();
+                        addDepartmentPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+                        addDepartmentPanel.setLayout(new BoxLayout(addDepartmentPanel, BoxLayout.Y_AXIS));
+                        JPanel fieldWrapper = new JPanel();
+                        fieldWrapper.setLayout(new GridLayout(3, 2, 30, 10));
+                        JLabel departmentName = new JLabel("Tên đơn vị");
+                        fieldWrapper.add(departmentName);
+                        JTextField departmentNameInput = new JTextField();
+                        fieldWrapper.add(departmentNameInput);
+                        JLabel maxConcurrentRequest = new JLabel("Số lượt tiếp công dân tối đa trong ngày");
+                        fieldWrapper.add(maxConcurrentRequest);
+                        JTextField maxConcurrentRequestInput = new JTextField();
+                        fieldWrapper.add(maxConcurrentRequestInput);
+                        addDepartmentPanel.add(fieldWrapper);
+                        addDepartmentPanel.add(Box.createVerticalStrut(20));
+                        JPanel btnWrapper = new JPanel();
+                        btnWrapper.setLayout(new BoxLayout(btnWrapper, BoxLayout.X_AXIS));
+                        JButton ok = new JButton("OK");
+                        JButton cancel = new JButton("Hủy bỏ");
+                        btnWrapper.add(ok);
+                        btnWrapper.add(Box.createHorizontalStrut(20));
+                        btnWrapper.add(cancel);
+                        addDepartmentPanel.add(btnWrapper);
+                        ok.addActionListener(new ActionListener() {
+                            @Override
+                            public void actionPerformed(ActionEvent e) {
+                                ok.setEnabled(false);
+                                DataUpdater.addDepartment(addDepartmentDialog, departmentNameInput.getText(), Integer.parseInt(maxConcurrentRequestInput.getText()));
+                                addDepartmentDialog.dispose();
+                            }
+                        });
+                        cancel.addActionListener(new ActionListener() {
+                            @Override
+                            public void actionPerformed(ActionEvent e) {
+                                addDepartmentDialog.dispose();
+                            }
+                        });
+                        addDepartmentDialog.pack();
+                        addDepartmentDialog.setLocationRelativeTo(mainWindow);
+                        addDepartmentDialog.setVisible(true);
                     }
                 });
                 departmentInfo.addActionListener(new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent e) {
-
+                        JDialog departmentInfoDialog = new JDialog(mainWindow, "Thông tin đơn vị", false);
+                        JPanel departmentInfoPanel = (JPanel) departmentInfoDialog.getContentPane();
+                        departmentInfoPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+                        departmentInfoPanel.setLayout(new BoxLayout(departmentInfoPanel, BoxLayout.Y_AXIS));
+                        JPanel fieldWrapper = new JPanel();
+                        fieldWrapper.setLayout(new GridLayout(3, 2, 30, 10));
+                        JLabel departmentName = new JLabel("Tên đơn vị");
+                        fieldWrapper.add(departmentName);
+                        JTextField departmentNameInput = new JTextField();
+                        fieldWrapper.add(departmentNameInput);
+                        JLabel maxConcurrentRequest = new JLabel("Số lượt tiếp công dân tối đa trong ngày");
+                        fieldWrapper.add(maxConcurrentRequest);
+                        JTextField maxConcurrentRequestInput = new JTextField();
+                        fieldWrapper.add(maxConcurrentRequestInput);
+                        departmentInfoPanel.add(fieldWrapper);
+                        departmentInfoPanel.add(Box.createVerticalStrut(20));
+                        JPanel btnWrapper = new JPanel();
+                        btnWrapper.setLayout(new BoxLayout(btnWrapper, BoxLayout.X_AXIS));
+                        JButton ok = new JButton("OK");
+                        JButton cancel = new JButton("Hủy bỏ");
+                        btnWrapper.add(ok);
+                        btnWrapper.add(Box.createHorizontalStrut(20));
+                        btnWrapper.add(cancel);
+                        departmentInfoPanel.add(btnWrapper);
+                        ok.addActionListener(new ActionListener() {
+                            @Override
+                            public void actionPerformed(ActionEvent e) {
+                                ok.setEnabled(false);
+                                DataUpdater.addDepartment(departmentInfoDialog, departmentNameInput.getText(), Integer.parseInt(maxConcurrentRequestInput.getText()));
+                                departmentInfoDialog.dispose();
+                            }
+                        });
+                        cancel.addActionListener(new ActionListener() {
+                            @Override
+                            public void actionPerformed(ActionEvent e) {
+                                departmentInfoDialog.dispose();
+                            }
+                        });
+                        departmentInfoDialog.pack();
+                        departmentInfoDialog.setLocationRelativeTo(mainWindow);
+                        departmentInfoDialog.setVisible(true);
                     }
                 });
                 deleteDepartment.addActionListener(new ActionListener() {

@@ -14,6 +14,7 @@ public class Department {
     @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "departmentId", length = 36, columnDefinition = "VARCHAR(36)")
     private UUID departmentId;
+    @Column(name = "departmentName", unique = true, nullable = false)
     private String departmentName;
     private int numOfProcessedRequest;
     private int maxConcurrentRequestInDay;

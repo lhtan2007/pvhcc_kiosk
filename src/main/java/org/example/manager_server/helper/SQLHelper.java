@@ -53,13 +53,13 @@ public class SQLHelper {
         }
     }
 
-    public static boolean addDepartment(String departmentName, int numOfProcessedRequest, int maxConcurrentRequestInDay) {
+    public static boolean addDepartment(String departmentName, int maxConcurrentRequestInDay) {
         boolean isCompleted = false;
         try(Session session = sessionFactory.openSession()) {
             Transaction tx = null;
             try {
                 tx = session.beginTransaction();
-                Department newDepartment = new Department(departmentName, numOfProcessedRequest, maxConcurrentRequestInDay);
+                Department newDepartment = new Department(departmentName, 0, maxConcurrentRequestInDay);
                 session.persist(newDepartment);
                 tx.commit();
                 isCompleted = true;

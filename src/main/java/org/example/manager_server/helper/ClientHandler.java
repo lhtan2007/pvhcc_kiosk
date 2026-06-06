@@ -55,7 +55,6 @@ public class ClientHandler implements Runnable {
             switch (action) {
                 case "GET_DEPARTMENTS":
                     List<Department> departmentList = SQLHelper.getAllDepartments();
-
                     if(departmentList != null && !departmentList.isEmpty()) {
                         JsonElement depts = gson.toJsonTree(departmentList);
                         response.addProperty("status", "ok");
@@ -66,6 +65,23 @@ public class ClientHandler implements Runnable {
                         response.addProperty("status", "error");
                         response.add("data", new JsonArray());
                         response.addProperty("message", "Không tìm thấy đơn vị nào hoặc lỗi cơ sở dữ liệu.");
+                    }
+                    break;
+
+                case "ADD_DEPARTMENT":
+                    JsonObject deptData = requestData.get("data").getAsJsonObject();
+                    if(deptData != null) {
+                        String deptName = deptData.get("deptName").getAsString();
+                        int maxConcurrentCtz = deptData.get("maxConcurrentCtz").getAsInt();
+                        boolean isCompleted = SQLHelper.addDepartment(deptName,  maxConcurrentCtz);
+                        if(isCompleted) {
+                            response.addProperty("status", "ok");
+                            response.addProperty("message", "Đã thêm thành công đơn vị có thông tin vừa nhập.");
+                        }
+                        else {
+                            response.addProperty("status", "error");
+                            response.addProperty("message", "Không thể thêm đơn vị do bị trùng tên với đơn vị khác. Vui lòng kiểm tra lại.");
+                        }
                     }
                     break;
 
