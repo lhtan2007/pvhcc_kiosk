@@ -16,15 +16,12 @@ public class ValidationHelper {
         try {
             Point location = nationalIdInput.getLocationOnScreen();
             int x = location.x;
-            // Đặt y ngay mép dưới của Textbox
             int y = location.y + nationalIdInput.getHeight();
 
-            // 4. Hiển thị Popup
             PopupFactory popupFactory = PopupFactory.getSharedInstance();
             currentPopup = popupFactory.getPopup(nationalIdInput, toolTip, x, y);
             currentPopup.show();
 
-            // 5. Tự động ẩn Tooltip sau 2.5 giây (2500ms) để không làm vướng víu giao diện
             Timer timer = new Timer(2500, e -> {
                 if (currentPopup != null) {
                     currentPopup.hide();
