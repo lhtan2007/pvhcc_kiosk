@@ -4,6 +4,7 @@ import com.formdev.flatlaf.FlatLightLaf;
 import com.google.gson.JsonObject;
 import org.example.manager_client.helper.ClockPanel;
 import org.example.manager_client.helper.DataUpdater;
+import org.example.manager_client.helper.XMLHelper;
 import org.example.shared.helper.PwdHashHelper;
 import org.example.manager_client.helper.NetworkInitializer;
 import org.example.shared.helper.CustomSVGTranscoder;
@@ -23,6 +24,7 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -44,7 +46,8 @@ public class MainManagerClient {
     public static DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
 
     //Department updater
-    private static final javax.swing.Timer departmentUpdaterTimer = new javax.swing.Timer(1000, new ActionListener() {
+    private static final javax.swing.Timer departmentUpdaterTimer =
+    new javax.swing.Timer(1000, new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent e) {
             DataUpdater.updateDepartment(departmentList);
@@ -60,6 +63,7 @@ public class MainManagerClient {
                 DataUpdater.updateRequest(selectedDept, requestNumber, fullNameSrv, nationalIdSrv);
                 DataUpdater.updateDataToQueue(rqQueueTm, selectedDept);
                 DataUpdater.updateDataToLog(rqLogTm, selectedDept);
+                deptName.setText(selectedDept.getDepartmentName());
                 numOfProcessedRequestSrv.setText(String.valueOf(selectedDept.getNumOfProcessedRequest()));
                 maxConcurrentRqInDaySrv.setText(String.valueOf(selectedDept.getMaxConcurrentRequestInDay()));
             }
@@ -131,7 +135,9 @@ public class MainManagerClient {
                                 try {
                                     JsonObject response = get();
                                     if(response == null) {
-                                        JOptionPane.showMessageDialog(null, "Mất kết nối với máy chủ.", "Lỗi mạng", JOptionPane.ERROR_MESSAGE);
+                                        JOptionPane.showMessageDialog(null,
+                                                "Mất kết nối với máy chủ.", "Lỗi mạng",
+                                                JOptionPane.ERROR_MESSAGE);
                                         return;
                                     }
                                     if("error".equals(response.get("status").getAsString())) {
@@ -147,12 +153,16 @@ public class MainManagerClient {
                                     }
                                     else {
                                         String error = response.get("message").getAsString();
-                                        JOptionPane.showMessageDialog(null, "Lỗi hệ thống: " + error, "Thất bại", JOptionPane.ERROR_MESSAGE);
+                                        JOptionPane.showMessageDialog(null,
+                                                "Lỗi hệ thống: " + error, "Thất bại",
+                                                JOptionPane.ERROR_MESSAGE);
                                     }
                                 }
                                 catch(Exception e) {
                                     e.printStackTrace();
-                                    JOptionPane.showMessageDialog(null, "Lỗi trong quá trình xử lý: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                                    JOptionPane.showMessageDialog(null,
+                                            "Lỗi trong quá trình xử lý: " + e.getMessage(), "Lỗi",
+                                            JOptionPane.ERROR_MESSAGE);
                                 }
                                 finally {
                                     mainWindow.dispose();
@@ -235,7 +245,9 @@ public class MainManagerClient {
                         String userName = usrNameInput.getText();
                         char[] pwdChars = pwdInput.getPassword();
                         if(address.isEmpty() || userName.isEmpty() || pwdChars.length == 0) {
-                            JOptionPane.showMessageDialog(null, "Thông tin đăng nhập không được bỏ trống. Xin vui lòng kiểm tra lại.", "Không thực hiện được yêu cầu", JOptionPane.ERROR_MESSAGE);
+                            JOptionPane.showMessageDialog(null,
+                                    "Thông tin đăng nhập không được bỏ trống. Xin vui lòng kiểm tra lại.",
+                                    "Không thực hiện được yêu cầu", JOptionPane.ERROR_MESSAGE);
                             return;
                         }
                         String hashedPwd = PwdHashHelper.hashPwd(new String(pwdChars));
@@ -263,7 +275,9 @@ public class MainManagerClient {
                                 try {
                                     JsonObject response = get();
                                     if(response == null) {
-                                        JOptionPane.showMessageDialog(null, "Mất kết nối với máy chủ.", "Lỗi mạng", JOptionPane.ERROR_MESSAGE);
+                                        JOptionPane.showMessageDialog(null,
+                                                "Mất kết nối với máy chủ.", "Lỗi mạng",
+                                                JOptionPane.ERROR_MESSAGE);
                                         return;
                                     }
                                     System.out.println("JSON: " + response);
@@ -284,19 +298,27 @@ public class MainManagerClient {
                                             ctzRequestUpdaterTimer.start();
                                         }
                                         else {
-                                            JOptionPane.showMessageDialog(null, "Thông tin đăng nhập không đúng hoặc tài khoản đang được sử dụng trên thiết bị khác. Vui lòng kiểm tra lại.", "Đăng nhập thất bại", JOptionPane.ERROR_MESSAGE);
+                                            JOptionPane.showMessageDialog(null,
+                                                    "Thông tin đăng nhập không đúng hoặc tài khoản " +
+                                                            "đang được sử dụng trên thiết bị khác. " +
+                                                            "Vui lòng kiểm tra lại.", "Đăng nhập thất bại",
+                                                    JOptionPane.ERROR_MESSAGE);
                                         }
                                         usrNameInput.setText("");
                                         pwdInput.setText("");
                                     }
                                     else {
                                         String error = response.get("message").getAsString();
-                                        JOptionPane.showMessageDialog(null, "Lỗi hệ thống: " + error, "Thất bại", JOptionPane.ERROR_MESSAGE);
+                                        JOptionPane.showMessageDialog(null,
+                                                "Lỗi hệ thống: " + error, "Thất bại",
+                                                JOptionPane.ERROR_MESSAGE);
                                     }
                                 }
                                 catch(Exception e) {
                                     e.printStackTrace();
-                                    JOptionPane.showMessageDialog(null, "Lỗi trong quá trình xử lý: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                                    JOptionPane.showMessageDialog(null,
+                                            "Lỗi trong quá trình xử lý: " + e.getMessage(), "Lỗi",
+                                            JOptionPane.ERROR_MESSAGE);
                                 }
                             }
                         };
@@ -309,11 +331,13 @@ public class MainManagerClient {
 
                 dashboardPane = new JPanel();
                 dashboardPane.setLayout(new BorderLayout());
-                ClockPanel clock = new ClockPanel(dashboardPane, UIManager.getFont("defaultFont").deriveFont(Font.BOLD | Font.ITALIC));
+                ClockPanel clock = new ClockPanel(dashboardPane,
+                        UIManager.getFont("defaultFont").deriveFont(Font.BOLD | Font.ITALIC));
                 clock.execute();
 
                 //Button panel
                 JPanel btnPanel = new JPanel();
+                btnPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 15, 10));
                 btnPanel.setLayout(new BoxLayout(btnPanel, BoxLayout.X_AXIS));
                 departmentList = new JComboBox<Department>();
                 JButton importList = new JButton("Nhập danh sách đơn vị");
@@ -338,13 +362,38 @@ public class MainManagerClient {
                 importList.addActionListener(new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent e) {
-
+                        FileDialog fd = new FileDialog(mainWindow, "Nhập danh sách đơn vị", FileDialog.LOAD);
+                        fd.setFile(LocalDateTime.now() + "_DSĐV.xml");
+                        fd.setVisible(true);
+                        String dir = fd.getDirectory();
+                        String fn = fd.getFile();
+                        if(!dir.equals("") && !fn.equals("") && dir != null && fn != null) {
+                            File file = new File(dir, fn);
+                            XMLHelper.importDepartmentsFromXML(file);
+                        }
                     }
                 });
                 exportList.addActionListener(new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent e) {
-
+                        FileDialog fd = new FileDialog(mainWindow, "Lưu danh sách đơn vị", FileDialog.SAVE);
+                        fd.setFile(LocalDateTime.now() + "_DSĐV.xml");
+                        fd.setVisible(true);
+                        String dir = fd.getDirectory();
+                        String fn = fd.getFile();
+                        if(!dir.equals("") && !fn.equals("") && dir != null && fn != null) {
+                            if(!fn.toLowerCase().endsWith(".xml")) {
+                                fn += ".xml";
+                            }
+                            File file = new File(dir, fn);
+                            System.out.println(file.getAbsolutePath());
+                            java.util.List<Department> dept = new ArrayList<Department>();
+                            for(int i = 0; i < departmentList.getItemCount(); i++) {
+                                Department d =  (Department)departmentList.getItemAt(i);
+                                dept.add(d);
+                            }
+                            XMLHelper.exportDepartmentsToXML(dept, file);
+                        }
                     }
                 });
                 addDepartment.addActionListener(new ActionListener() {
@@ -352,7 +401,7 @@ public class MainManagerClient {
                     public void actionPerformed(ActionEvent e) {
                         JDialog addDepartmentDialog = new JDialog(mainWindow, "Thêm đơn vị", false);
                         JPanel addDepartmentPanel = (JPanel) addDepartmentDialog.getContentPane();
-                        addDepartmentPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+                        addDepartmentPanel.setBorder(BorderFactory.createEmptyBorder(20,20,20,20));
                         addDepartmentPanel.setLayout(new BoxLayout(addDepartmentPanel, BoxLayout.Y_AXIS));
                         JPanel fieldWrapper = new JPanel();
                         fieldWrapper.setLayout(new GridLayout(3, 2, 30, 10));
@@ -378,7 +427,8 @@ public class MainManagerClient {
                             @Override
                             public void actionPerformed(ActionEvent e) {
                                 ok.setEnabled(false);
-                                DataUpdater.addDepartment(addDepartmentDialog, departmentNameInput.getText(), Integer.parseInt(maxConcurrentRequestInput.getText()));
+                                DataUpdater.addDepartment(addDepartmentDialog, departmentNameInput.getText(),
+                                        Integer.parseInt(maxConcurrentRequestInput.getText()));
                                 addDepartmentDialog.dispose();
                             }
                         });
@@ -396,35 +446,87 @@ public class MainManagerClient {
                 departmentInfo.addActionListener(new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent e) {
+                        String deptId = ((Department)departmentList.getSelectedItem()).getDepartmentId().toString();
+                        String orgDeptName = ((Department)departmentList.getSelectedItem()).getDepartmentName();
+                        String orgDeptMaxConcurrentCtz =
+                                String.valueOf(((Department)departmentList.getSelectedItem()).getMaxConcurrentRequestInDay());
                         JDialog departmentInfoDialog = new JDialog(mainWindow, "Thông tin đơn vị", false);
                         JPanel departmentInfoPanel = (JPanel) departmentInfoDialog.getContentPane();
-                        departmentInfoPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+                        departmentInfoPanel.setBorder(BorderFactory.createEmptyBorder(20,20,20,20));
                         departmentInfoPanel.setLayout(new BoxLayout(departmentInfoPanel, BoxLayout.Y_AXIS));
                         JPanel fieldWrapper = new JPanel();
                         fieldWrapper.setLayout(new GridLayout(3, 2, 30, 10));
                         JLabel departmentName = new JLabel("Tên đơn vị");
                         fieldWrapper.add(departmentName);
                         JTextField departmentNameInput = new JTextField();
+                        departmentNameInput.setText(orgDeptName);
                         fieldWrapper.add(departmentNameInput);
                         JLabel maxConcurrentRequest = new JLabel("Số lượt tiếp công dân tối đa trong ngày");
                         fieldWrapper.add(maxConcurrentRequest);
                         JTextField maxConcurrentRequestInput = new JTextField();
+                        maxConcurrentRequestInput.setText(orgDeptMaxConcurrentCtz);
                         fieldWrapper.add(maxConcurrentRequestInput);
                         departmentInfoPanel.add(fieldWrapper);
                         departmentInfoPanel.add(Box.createVerticalStrut(20));
                         JPanel btnWrapper = new JPanel();
                         btnWrapper.setLayout(new BoxLayout(btnWrapper, BoxLayout.X_AXIS));
+                        JButton exportListCtzRequest = new JButton("Xuất DS lượt tiếp công dân");
                         JButton ok = new JButton("OK");
                         JButton cancel = new JButton("Hủy bỏ");
+                        btnWrapper.add(exportListCtzRequest);
+                        btnWrapper.add(Box.createHorizontalStrut(20));
                         btnWrapper.add(ok);
                         btnWrapper.add(Box.createHorizontalStrut(20));
                         btnWrapper.add(cancel);
                         departmentInfoPanel.add(btnWrapper);
+                        exportListCtzRequest.addActionListener(new ActionListener() {
+                            @Override
+                            public void actionPerformed(ActionEvent e) {
+                                FileDialog fd = new FileDialog(mainWindow, "Lưu danh sách lượt tiếp công dân",
+                                        FileDialog.SAVE);
+                                fd.setFile(LocalDateTime.now() + "_"
+                                        + ((Department) departmentList.getSelectedItem()).getDepartmentName()
+                                        + "_DSTCD.xml");
+                                fd.setVisible(true);
+                                String dir = fd.getDirectory();
+                                String fn = fd.getFile();
+                                if(!dir.equals("") && !fn.equals("") && dir != null && fn != null) {
+                                    if(!fn.toLowerCase().endsWith(".xml")) {
+                                        fn += ".xml";
+                                    }
+                                    File file = new File(dir, fn);
+                                    System.out.println(file.getAbsolutePath());
+                                    java.util.List<CitizenRequest> ctzRequests = new ArrayList<>();
+                                    for(int i = 0; i < rqLogTm.getRowCount(); i++) {
+                                        CitizenRequest cr = new CitizenRequest();
+                                        cr.setRequestDate((LocalDateTime)rqLogTm.getValueAt(i, 0));
+                                        cr.setFullName((String)rqLogTm.getValueAt(i, 1));
+                                        cr.setNationalId((String)rqLogTm.getValueAt(i, 2));
+                                        cr.setRequestNumber((Integer)rqLogTm.getValueAt(i, 3));
+                                        int status;
+                                        if(rqLogTm.getValueAt(i, 4).equals("Đang chờ")) {
+                                            status = 0;
+                                        }
+                                        else if(rqLogTm.getValueAt(i, 4).equals("Đã xử lý")) {
+                                            status = 1;
+                                        }
+                                        else status = -1;
+                                        cr.setProcessStatus(status);
+                                        ctzRequests.add(cr);
+                                    }
+                                    XMLHelper.exportCitizenRequestsToXML(
+                                            (Department)departmentList.getSelectedItem(),
+                                            ctzRequests, file);
+                                }
+                                departmentInfoDialog.dispose();
+                            }
+                        });
                         ok.addActionListener(new ActionListener() {
                             @Override
                             public void actionPerformed(ActionEvent e) {
                                 ok.setEnabled(false);
-                                DataUpdater.addDepartment(departmentInfoDialog, departmentNameInput.getText(), Integer.parseInt(maxConcurrentRequestInput.getText()));
+                                DataUpdater.editDepartment(departmentInfoDialog, deptId, departmentNameInput.getText(),
+                                        Integer.parseInt(maxConcurrentRequestInput.getText()));
                                 departmentInfoDialog.dispose();
                             }
                         });
@@ -442,7 +544,19 @@ public class MainManagerClient {
                 deleteDepartment.addActionListener(new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent e) {
-
+                        String deptId = ((Department)departmentList.getSelectedItem()).getDepartmentId().toString();
+                        String[] option = {"OK", "Hủy bỏ"};
+                        int sel_opt = JOptionPane.showOptionDialog(mainWindow, "Bạn có chắc chắn muốn xóa " +
+                                "đơn vị này không?", "Xóa đơn vị", JOptionPane.DEFAULT_OPTION,
+                                JOptionPane.WARNING_MESSAGE, null, option, option[0]);
+                        switch (sel_opt) {
+                            case 0:
+                                DataUpdater.deleteDepartment(mainWindow, deptId);
+                                break;
+                            case 1:
+                            case JOptionPane.CLOSED_OPTION:
+                                break;
+                        }
                     }
                 });
                 changePwd.addActionListener(new ActionListener() {
@@ -480,7 +594,8 @@ public class MainManagerClient {
                             @Override
                             public void actionPerformed(ActionEvent e) {
                                 ok.setEnabled(false);
-                                DataUpdater.changePassword(changePwdDialog, accNameSrv.getText(), new String(newPwdInput.getPassword()), new String(retypePwdInput.getPassword()));
+                                DataUpdater.changePassword(changePwdDialog, accNameSrv.getText(),
+                                        new String(newPwdInput.getPassword()), new String(retypePwdInput.getPassword()));
                                 changePwdDialog.dispose();
                             }
                         });
@@ -513,7 +628,9 @@ public class MainManagerClient {
                                 try {
                                     JsonObject response = get();
                                     if(response == null) {
-                                        JOptionPane.showMessageDialog(null, "Mất kết nối với máy chủ.", "Lỗi mạng", JOptionPane.ERROR_MESSAGE);
+                                        JOptionPane.showMessageDialog(null,
+                                                "Mất kết nối với máy chủ.", "Lỗi mạng",
+                                                JOptionPane.ERROR_MESSAGE);
                                         return;
                                     }
                                     System.out.println("JSON: " + response);
@@ -526,12 +643,16 @@ public class MainManagerClient {
                                     }
                                     else {
                                         String error = response.get("message").getAsString();
-                                        JOptionPane.showMessageDialog(null, "Lỗi hệ thống: " + error, "Thất bại", JOptionPane.ERROR_MESSAGE);
+                                        JOptionPane.showMessageDialog(null,
+                                                "Lỗi hệ thống: " + error, "Thất bại",
+                                                JOptionPane.ERROR_MESSAGE);
                                     }
                                 }
                                 catch(Exception e) {
                                     e.printStackTrace();
-                                    JOptionPane.showMessageDialog(null, "Lỗi trong quá trình xử lý: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                                    JOptionPane.showMessageDialog(null,
+                                            "Lỗi trong quá trình xử lý: " + e.getMessage(), "Lỗi",
+                                            JOptionPane.ERROR_MESSAGE);
                                 }
                             }
                         };
@@ -550,9 +671,13 @@ public class MainManagerClient {
                 exportList.setVisible(false);
                 addDepartment.setVisible(false);
                 deleteDepartment.setVisible(false);
-                dashboardPane.add(btnPanel, BorderLayout.NORTH);
+                JScrollPane btnScr = new JScrollPane(btnPanel);
+                btnScr.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+                btnScr.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+                btnScr.setBorder(BorderFactory.createEmptyBorder());
+                dashboardPane.add(btnScr, BorderLayout.NORTH);
 
-                //Department information and statisitcs panel
+                //Department information and account manager panel
                 JPanel deptPanel = new JPanel();
                 deptPanel.setBackground(Color.GRAY);
                 deptPanel.setLayout(new BoxLayout(deptPanel, BoxLayout.Y_AXIS));
@@ -598,11 +723,11 @@ public class MainManagerClient {
                 deptDetailPanel.add(maxConcurrentRqInDaySrv, deptDetailPanelGbc);
                 deptInfoPanel.add(deptDetailPanel);
 
-                JPanel deptStatisticsPanel = new JPanel();
-                deptStatisticsPanel.setBorder(BorderFactory.createTitledBorder("Thống kê"));
+                JPanel deptAccountManagerPanel = new JPanel();
+                deptAccountManagerPanel.setBorder(BorderFactory.createTitledBorder("Quản lý tài khoản"));
 
                 deptPanel.add(deptInfoPanel);
-                deptPanel.add(deptStatisticsPanel);
+                deptPanel.add(deptAccountManagerPanel);
                 dashboardPane.add(deptPanel, BorderLayout.WEST);
                 //Citizen's request approval panel
                 JPanel ctzRequestWrapperPanel = new JPanel();

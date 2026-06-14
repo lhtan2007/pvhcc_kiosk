@@ -1,6 +1,8 @@
 package org.example.kiosk_client.helper;
 
 import java.awt.*;
+import java.awt.font.FontRenderContext;
+import java.awt.font.GlyphVector;
 import java.awt.print.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -25,6 +27,12 @@ public class TicketPrintHelper implements Printable {
         CENTER,
         RIGHT,
         JUSTIFY
+    }
+    private void drawTextAsShape(Graphics2D g2d, String text, float x, float y) {
+        FontRenderContext frc = g2d.getFontRenderContext();
+        GlyphVector gv = g2d.getFont().createGlyphVector(frc, text);
+        Shape textShape = gv.getOutline(x, y);
+        g2d.fill(textShape);
     }
     private void drawMultiLineString(Graphics2D g2d, String text, int startX, int startY, int maxWidth, TextAlignment align, int lineSpacing) {
         FontMetrics metrics = g2d.getFontMetrics();
@@ -71,12 +79,12 @@ public class TicketPrintHelper implements Printable {
             }
             if (align == TextAlignment.JUSTIFY) {
                 if(isLastLine) {
-                    g2d.drawString(line, startX, startY);
+                    drawTextAsShape(g2d, line, startX, startY);
                 }
                 else {
                     String[] words = line.split(" ");
                     if (words.length <= 1) {
-                        g2d.drawString(line, startX, startY);
+                        drawTextAsShape(g2d, line, startX, startY);
                     }
                     else {
                         int totalWordsWidth = 0;
@@ -87,14 +95,14 @@ public class TicketPrintHelper implements Printable {
                         float spaceBetweenWords = (float) totalSpaceToFill / (words.length - 1);
                         float justifyX = startX;
                         for (String word : words) {
-                            g2d.drawString(word, (int) justifyX, startY);
+                            drawTextAsShape(g2d, word, (int) justifyX, startY);
                             justifyX += metrics.stringWidth(word) + spaceBetweenWords;
                         }
                     }
                 }
             }
             else {
-                g2d.drawString(line, currentX, startY);
+                drawTextAsShape(g2d, line, currentX, startY);
             }
             startY += lineHeight;
         }
@@ -105,6 +113,7 @@ public class TicketPrintHelper implements Printable {
             return NO_SUCH_PAGE;
         }
         Graphics2D g2d = (Graphics2D)graphics;
+        g2d.setColor(Color.BLACK);
         g2d.translate(pageFormat.getImageableX(), pageFormat.getImageableY());
         int printWidth = (int)pageFormat.getImageableWidth();
 
@@ -126,7 +135,8 @@ public class TicketPrintHelper implements Printable {
         drawMultiLineString(g2d, ticketInf, 0, 120, printWidth, TextAlignment.CENTER, 1);
 
         g2d.setFont(citizenInfFont);
-        String notice = "Phiếu này chỉ cấp một lần và có giá trị cho một lượt làm việc với cơ quan ghi trên phiếu của công dân có thông tin sau đây khi được thông báo:";
+        String notice = "Phiếu này chỉ cấp một lần và có giá trị cho một lượt làm việc với cơ quan ghi trên phiếu của " +
+                "công dân có thông tin sau đây khi được thông báo:";
         String citizenInf = "Họ và tên: " + fullName + "\n" +
                 "Số ĐDCN: " + nationalId;
         drawMultiLineString(g2d, notice + "\n" + citizenInf, 0, 200, printWidth, TextAlignment.JUSTIFY, 1);

@@ -59,6 +59,13 @@ public class DataUpdater {
                             Department currentModelDept = model.getElementAt(i);
                             for (Department freshDept : newDepts) {
                                 if (currentModelDept.getDepartmentId().equals(freshDept.getDepartmentId())) {
+                                    if(!currentModelDept.getDepartmentName().equals(freshDept.getDepartmentName())) {
+                                        currentModelDept.setDepartmentName(freshDept.getDepartmentName());
+                                        int idx = model.getIndexOf(currentModelDept);
+                                        model.removeElementAt(idx);
+                                        model.insertElementAt(currentModelDept, idx);
+                                        model.setSelectedItem(currentModelDept);
+                                    }
                                     currentModelDept.setNumOfProcessedRequest(freshDept.getNumOfProcessedRequest());
                                     currentModelDept.setMaxConcurrentRequestInDay(freshDept.getMaxConcurrentRequestInDay());
                                     break;
@@ -282,6 +289,75 @@ public class DataUpdater {
             else {
                 JOptionPane.showMessageDialog(dialog, "Lỗi kết nối. Vui lòng kiểm tra lại.", "Không thể thêm đơn vị", JOptionPane.ERROR_MESSAGE);
             }
+        }
+    }
+
+    public static void addDepartmentFromXML(Department department) {
+        JsonObject request = new JsonObject();
+        request.addProperty("clientType", "manager");
+        request.addProperty("action", "ADD_DEPARTMENT");
+        String deptName = department.getDepartmentName();
+        int maxConcurrentCtz = department.getMaxConcurrentRequestInDay();
+        JsonObject departmentData = new JsonObject();
+        departmentData.addProperty("deptName", deptName);
+        departmentData.addProperty("maxConcurrentCtz", maxConcurrentCtz);
+        request.add("data", departmentData);
+        JsonObject response = NetworkInitializer.getInstance().sendRequest(request);
+    }
+
+    public static void editDepartment(JDialog dialog, String deptId, String deptName, int maxConcurrentCtz) {
+        if(deptName.isEmpty()) {
+            JOptionPane.showMessageDialog(dialog, "Tên đơn vị không thể bỏ trống. Vui lòng kiểm tra lại.", "Không thể thêm đơn vị", JOptionPane.ERROR_MESSAGE);
+        }
+        else if(maxConcurrentCtz == 0) {
+            JOptionPane.showMessageDialog(dialog, "Số lượt tiếp công dân phải là số nguyên lớn hơn 0. Vui lòng kiểm tra lại.", "Không thể thêm đơn vị", JOptionPane.ERROR_MESSAGE);
+        }
+        else {
+            JsonObject request = new JsonObject();
+            request.addProperty("clientType", "manager");
+            request.addProperty("action", "EDIT_DEPARTMENT");
+            JsonObject departmentData = new JsonObject();
+            departmentData.addProperty("deptId", deptId);
+            departmentData.addProperty("deptName", deptName);
+            departmentData.addProperty("maxConcurrentCtz", maxConcurrentCtz);
+            request.add("data", departmentData);
+            JsonObject response = NetworkInitializer.getInstance().sendRequest(request);
+            if(response != null) {
+                String res = response.get("status").getAsString();
+                String msg = response.get("message").getAsString();
+                if(res.equals("ok")) {
+                    JOptionPane.showMessageDialog(dialog, msg, "Sửa cấu hình đơn vị thành công", JOptionPane.INFORMATION_MESSAGE);
+                }
+                else {
+                    JOptionPane.showMessageDialog(dialog, msg, "Không thể sửa cấu hình đơn vị", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+            else {
+                JOptionPane.showMessageDialog(dialog, "Lỗi kết nối. Vui lòng kiểm tra lại.", "Không thể sửa cấu hình đơn vị", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    public static void deleteDepartment(JFrame mainWindow, String deptId) {
+        JsonObject request = new JsonObject();
+        request.addProperty("clientType", "manager");
+        request.addProperty("action", "DELETE_DEPARTMENT");
+        request.addProperty("data", deptId);
+        JsonObject response = NetworkInitializer.getInstance().sendRequest(request);
+        if(response != null) {
+            String res = response.get("status").getAsString();
+            String msg = response.get("message").getAsString();
+            if(res.equals("ok")) {
+                JOptionPane.showMessageDialog(mainWindow, msg, "Xóa đơn vị thành công",
+                        JOptionPane.INFORMATION_MESSAGE);
+            }
+            else {
+                JOptionPane.showMessageDialog(mainWindow, msg, "Không thể xóa đơn vị", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+        else {
+            JOptionPane.showMessageDialog(mainWindow, "Lỗi kết nối. Vui lòng kiểm tra lại.", "Không thể " +
+                    "xóa đơn vị", JOptionPane.ERROR_MESSAGE);
         }
     }
 }

@@ -76,6 +76,57 @@ public class SQLHelper {
         return isCompleted;
     }
 
+    public static boolean editDepartment(UUID departmentId, String departmentName, int maxConcurrentRequestInDay) {
+        boolean isCompleted = false;
+        try(Session session = sessionFactory.openSession()) {
+            Transaction tx = null;
+            try {
+                tx = session.beginTransaction();
+                Department dept = getDepartment(departmentId);
+                if(dept != null) {
+                    dept.setDepartmentName(departmentName);
+                    dept.setMaxConcurrentRequestInDay(maxConcurrentRequestInDay);
+                    session.merge(dept);
+                    tx.commit();
+                    isCompleted = true;
+                }
+            }
+            catch(Exception e) {
+                if(tx != null) tx.rollback();
+                System.err.println("Lỗi khi sửa cấu hình đơn vị: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+        catch(Exception e) {
+            e.printStackTrace();
+        }
+        return isCompleted;
+    }
+
+    public static boolean deleteDepartment(UUID departmentId) {
+        boolean isCompleted = false;
+        try(Session session = sessionFactory.openSession()) {
+            Transaction tx = null;
+            try {
+                tx = session.beginTransaction();
+                Department dept = getDepartment(departmentId);
+                if(dept != null) {
+                    session.remove(dept);
+                    tx.commit();
+                    isCompleted = true;
+                }
+            }
+            catch(Exception e) {
+                if(tx != null) tx.rollback();
+                e.printStackTrace();
+            }
+        }
+        catch(Exception e) {
+            e.printStackTrace();
+        }
+        return isCompleted;
+    }
+
     public static CitizenRequest getNewestCtzRequest(Department dept) {
         try(Session session = sessionFactory.openSession()) {
             Query<CitizenRequest> requestQuery = session.createQuery(
