@@ -1,11 +1,12 @@
 package org.example.kiosk_client.helper;
 
 import com.google.gson.*;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.*;
 import java.lang.reflect.Type;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -13,7 +14,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public class NetworkInitializer {
-    private String IP_ADDRESS = "127.0.0.1";
+    private String IP_ADDRESS = "";
     private int PORT = 9999;
     private static NetworkInitializer instance;
     private Socket clientSocket;
@@ -21,7 +22,39 @@ public class NetworkInitializer {
     private BufferedReader clientIn;
     private final Gson gson;
     private boolean isConnected = false;
+    private static final String CONFIG_FILE_PATH = "NetworkConfig.xml";
+    private void loadConfigurationFromXML() {
+        try {
+            File configFile = new File(CONFIG_FILE_PATH);
+            if (!configFile.exists()) {
+                System.err.println("Không tìm thấy file " + CONFIG_FILE_PATH + ". Hệ thống sẽ dùng cấu hình mặc định (localhost:9999).");
+                this.IP_ADDRESS = "127.0.0.1";
+                this.PORT = 9999;
+                return;
+            }
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document document = builder.parse(configFile);
+            document.getDocumentElement().normalize();
+            NodeList ipList = document.getElementsByTagName("server-ip");
+            if (ipList.getLength() > 0) {
+                this.IP_ADDRESS = ipList.item(0).getTextContent().trim();
+            }
+            NodeList portList = document.getElementsByTagName("server-port");
+            if (portList.getLength() > 0) {
+                this.PORT = Integer.parseInt(portList.item(0).getTextContent().trim());
+            }
+            System.out.println("Đọc cấu hình XML thành công! Server gốc: " + IP_ADDRESS + ":" + PORT);
+        }
+        catch (Exception e) {
+            System.err.println("Lỗi khi đọc file cấu hình XML: " + e.getMessage());
+            System.err.println("Hệ thống tự động chuyển về cấu hình dự phòng mạng nội bộ.");
+            this.IP_ADDRESS = "127.0.0.1";
+            this.PORT = 9999;
+        }
+    }
     private NetworkInitializer() {
+        loadConfigurationFromXML();
         this.gson = new GsonBuilder()
                 .registerTypeAdapter(LocalDateTime.class, new JsonSerializer<LocalDateTime>() {
                     @Override
@@ -31,6 +64,12 @@ public class NetworkInitializer {
                 })
                 .create();
     }
+    public String getIpAddress() {
+        return IP_ADDRESS;
+    }
+    public int getPort() {
+        return PORT;
+    }
     public Gson getGson() {
         return gson;
     }
@@ -39,7 +78,7 @@ public class NetworkInitializer {
         return instance;
     }
     public synchronized boolean connect() {
-        if(isConnected && clientSocket != null && clientSocket.isClosed()) {
+        if(!clientSocket.isClosed()) {
             return true;
         }
         try {

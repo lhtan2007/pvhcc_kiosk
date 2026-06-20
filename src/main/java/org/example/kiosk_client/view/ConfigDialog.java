@@ -17,12 +17,12 @@ public class ConfigDialog extends JDialog {
         formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         formPanel.add(new JLabel("Địa chỉ IP Server"));
-        ipInput = new JTextField("127.0.0.1");
+        ipInput = new JTextField(NetworkInitializer.getInstance().getIpAddress());
         ipInput.setFont(new Font("Segoe UI", Font.PLAIN, 18));
         formPanel.add(ipInput);
 
         formPanel.add(new JLabel("Cổng"));
-        portInput = new JTextField("9999");
+        portInput = new JTextField(String.valueOf(NetworkInitializer.getInstance().getPort()));
         portInput.setFont(new Font("Segoe UI", Font.PLAIN, 18));
         formPanel.add(portInput);
 
