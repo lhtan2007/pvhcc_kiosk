@@ -1,6 +1,5 @@
 package org.example.manager_client.helper;
 
-import com.google.gson.JsonObject;
 import org.example.shared.model.CitizenRequest;
 import org.example.shared.model.Department;
 import org.w3c.dom.Document;
@@ -16,6 +15,7 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -44,7 +44,8 @@ public class XMLHelper {
             transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
             transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
             DOMSource source = new DOMSource(doc);
-            StreamResult result = new StreamResult(file);
+            FileOutputStream fos = new FileOutputStream(file);
+            StreamResult result = new StreamResult(fos);
             transformer.transform(source, result);
         }
         catch(Exception e){
@@ -117,7 +118,8 @@ public class XMLHelper {
             transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
             transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
             DOMSource source = new DOMSource(doc);
-            StreamResult result = new StreamResult(file);
+            FileOutputStream fileOut = new FileOutputStream(file);
+            StreamResult result = new StreamResult(fileOut);
             transformer.transform(source, result);
         }
         catch(Exception e){

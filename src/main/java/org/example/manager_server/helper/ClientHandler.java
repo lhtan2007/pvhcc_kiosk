@@ -178,7 +178,7 @@ public class ClientHandler implements Runnable {
                     JsonObject loginInfo = requestData.getAsJsonObject("data");
                     String userName = loginInfo.get("username").getAsString();
                     String hashedPwd = loginInfo.get("password").getAsString();
-                    Account acc = SQLHelper.getAccounts(userName);
+                    Account acc = SQLHelper.getAccount(userName);
                     response.addProperty("action", "LOGIN");
                     response.addProperty("status", "ok");
                     if(acc != null && !acc.getLoginStatus() && acc.getHashedPwd().equals(hashedPwd)) {
@@ -199,7 +199,7 @@ public class ClientHandler implements Runnable {
 
                 case "LOGOUT":
                     String user = requestData.get("data").getAsString();
-                    Account acc1 = SQLHelper.getAccounts(user);
+                    Account acc1 = SQLHelper.getAccount(user);
                     response.addProperty("action", "LOGOUT");
                     response.addProperty("status", "ok");
                     if(acc1 != null && acc1.getLoginStatus()) {
@@ -258,6 +258,59 @@ public class ClientHandler implements Runnable {
                         else {
                             response.addProperty("status", "error");
                             response.addProperty("message", "Không thể xóa đơn vị. Vui lòng kiểm tra lại.");
+                        }
+                    }
+                    break;
+
+                case "GET_ACCOUNTS":
+                    List<Account> accountList = SQLHelper.getAccounts();
+                    if(accountList != null && !accountList.isEmpty()) {
+                        JsonElement accs = gson.toJsonTree(accountList);
+                        response.addProperty("status", "ok");
+                        response.add("data", accs);
+                        response.addProperty("message", "Lấy danh sách thành công");
+                    }
+                    else {
+                        response.addProperty("status", "error");
+                        response.add("data", new JsonArray());
+                        response.addProperty("message", "Lỗi cơ sở dữ liệu.");
+                    }
+                    break;
+
+                case "ADD_ACCOUNT":
+                    JsonObject newAccData = requestData.get("data").getAsJsonObject();
+                    if(newAccData != null) {
+                        String newUsrName = newAccData.get("username").getAsString();
+                        String newAccPwd = newAccData.get("password").getAsString();
+                        int role = newAccData.get("role").getAsInt();
+                        boolean isCompleted = SQLHelper.createAccount(newUsrName, newAccPwd, role);
+                        if(isCompleted) {
+                            response.addProperty("status", "ok");
+                            response.addProperty("message", "Đã thêm thành công tài khoản" + "\""
+                                + newUsrName + "\"."
+                            );
+                        }
+                        else {
+                            response.addProperty("status", "error");
+                            response.addProperty("message", "Không thể thêm do bị trùng tên với " +
+                                    "tài khoản khác. Vui lòng kiểm tra lại.");
+                        }
+                    }
+                    break;
+
+                case "DELETE_ACCOUNT":
+                    String deletedAcc = requestData.get("data").getAsString();
+                    if(deletedAcc != null) {
+                        boolean isCompleted = SQLHelper.deleteAccount(deletedAcc);
+                        if(isCompleted) {
+                            response.addProperty("status", "ok");
+                            response.addProperty("message", "Đã xóa thành công tài khoản "
+                                    + deletedAcc + ".");
+                        }
+                        else {
+                            response.addProperty("status", "error");
+                            response.addProperty("message", "Không thể xóa tài khoản. " +
+                                    "Vui lòng kiểm tra lại.");
                         }
                     }
                     break;

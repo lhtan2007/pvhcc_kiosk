@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import org.example.manager_client.MainManagerClient;
+import org.example.shared.model.Account;
 import org.example.shared.model.CitizenRequest;
 import org.example.shared.model.Department;
 
@@ -12,6 +13,7 @@ import javax.swing.table.DefaultTableModel;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 public class DataUpdater {
     public static void updateDepartment(JComboBox<Department> departmentJComboBox) {
@@ -37,15 +39,15 @@ public class DataUpdater {
             protected void done() {
                 try {
                     List<Department> newDepts = get();
-                    if (newDepts == null || newDepts.isEmpty()) return;
+                    if(newDepts == null || newDepts.isEmpty()) return;
                     DefaultComboBoxModel<Department> model = (DefaultComboBoxModel<Department>) departmentJComboBox.getModel();
-                    if (model.getSize() == 0 || model.getSize() != newDepts.size()) {
+                    if(model.getSize() == 0 || model.getSize() != newDepts.size()) {
                         Department selected = (Department) model.getSelectedItem();
                         model.removeAllElements();
-                        for (Department dept : newDepts) {
+                        for(Department dept : newDepts) {
                             model.addElement(dept);
                         }
-                        if (selected != null) {
+                        if(selected != null) {
                             for (int i = 0; i < model.getSize(); i++) {
                                 if (model.getElementAt(i).getDepartmentId().equals(selected.getDepartmentId())) {
                                     model.setSelectedItem(model.getElementAt(i));
@@ -55,10 +57,10 @@ public class DataUpdater {
                         }
                     }
                     else {
-                        for (int i = 0; i < model.getSize(); i++) {
+                        for(int i = 0; i < model.getSize(); i++) {
                             Department currentModelDept = model.getElementAt(i);
-                            for (Department freshDept : newDepts) {
-                                if (currentModelDept.getDepartmentId().equals(freshDept.getDepartmentId())) {
+                            for(Department freshDept : newDepts) {
+                                if(currentModelDept.getDepartmentId().equals(freshDept.getDepartmentId())) {
                                     if(!currentModelDept.getDepartmentName().equals(freshDept.getDepartmentName())) {
                                         currentModelDept.setDepartmentName(freshDept.getDepartmentName());
                                         int idx = model.getIndexOf(currentModelDept);
@@ -74,7 +76,7 @@ public class DataUpdater {
                         }
                     }
                 }
-                catch (Exception e) {
+                catch(Exception e) {
                     System.err.println("Lỗi khi cập nhật JComboBox: " + e.getMessage());
                     e.printStackTrace();
                 }
@@ -121,6 +123,140 @@ public class DataUpdater {
             }
         };
         updateWorker.execute();
+    }
+    public static void updateAccount(DefaultTableModel accountTm, JTable accountTable) {
+        SwingWorker<List<Account>, Void> updateWorker = new SwingWorker<List<Account>, Void>() {
+            @Override
+            protected List<Account> doInBackground() throws Exception {
+                List<Account> accountList = new ArrayList<>();
+                JsonObject request = new JsonObject();
+                request.addProperty("clientType", "manager");
+                request.addProperty("action", "GET_ACCOUNTS");
+                JsonObject response = NetworkInitializer.getInstance().sendRequest(request);
+                if (response != null && "ok".equals(response.get("status").getAsString())) {
+                    if (response.has("data") && response.get("data").isJsonArray()) {
+                        JsonArray dataArray = response.getAsJsonArray("data");
+                        Type deptType = new TypeToken<List<Account>>() {}.getType();
+                        accountList = NetworkInitializer.getInstance().getGson().fromJson(dataArray, deptType);
+                    }
+                }
+                return accountList;
+            }
+            @Override
+            protected void done() {
+                try {
+                    List<Account> newAccounts = get();
+                    if (newAccounts == null) return;
+                    String selectedUsername = null;
+                    int selectedRowView = accountTable.getSelectedRow();
+                    if(selectedRowView != -1) {
+                        int selectedRowModel = accountTable.convertRowIndexToModel(selectedRowView);
+                        selectedUsername = (String)accountTm.getValueAt(selectedRowModel, 0);
+                    }
+                    for (int i = accountTm.getRowCount() - 1; i >= 0; i--) {
+                        String currentUsername = (String) accountTm.getValueAt(i, 0);
+                        Account matchingAccount = null;
+                        for(Account acc : newAccounts) {
+                            if(acc.getUserName().equals(currentUsername)) {
+                                matchingAccount = acc;
+                                break;
+                            }
+                        }
+                        if(matchingAccount != null) {
+                            Integer currentRole = (Integer)accountTm.getValueAt(i, 1);
+                            if(!currentRole.equals(matchingAccount.getRole())) {
+                                accountTm.setValueAt(matchingAccount.getRole(), i, 1);
+                            }
+                            newAccounts.remove(matchingAccount);
+                        }
+                        else {
+                            accountTm.removeRow(i);
+                        }
+                    }
+                    for(Account newAcc : newAccounts) {
+                        Object[] rowData = new Object[]{newAcc.getUserName(), newAcc.getRole()};
+                        accountTm.addRow(rowData);
+                    }
+                    if(selectedUsername != null) {
+                        for(int i = 0; i < accountTm.getRowCount(); i++) {
+                            String usernameInModel = (String) accountTm.getValueAt(i, 0);
+                            if(usernameInModel.equals(selectedUsername)) {
+                                int rowIndexView = accountTable.convertRowIndexToView(i);
+                                if(rowIndexView != -1) {
+                                    accountTable.setRowSelectionInterval(rowIndexView, rowIndexView);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+                catch(Exception e) {
+                    System.err.println("Lỗi khi cập nhật danh sách tài khoản: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        };
+        updateWorker.execute();
+    }
+    public static void createAccount(JFrame mainWindow, String userName, String hashedPwd, int role) {
+        JsonObject request = new JsonObject();
+        request.addProperty("clientType", "manager");
+        request.addProperty("action", "ADD_ACCOUNT");
+        JsonObject accountData = new JsonObject();
+        accountData.addProperty("username", userName);
+        accountData.addProperty("password", hashedPwd);
+        accountData.addProperty("role", role);
+        request.add("data", accountData);
+        JsonObject response = NetworkInitializer.getInstance().sendRequest(request);
+        if(response != null) {
+            String res = response.get("status").getAsString();
+            String msg = response.get("message").getAsString();
+            if(res.equals("ok")) {
+                JOptionPane.showMessageDialog(mainWindow, msg, "Thêm tài khoản thành công",
+                        JOptionPane.INFORMATION_MESSAGE);
+            }
+            else {
+                JOptionPane.showMessageDialog(mainWindow, msg, "Không thể thêm tài khoản",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        }
+        else {
+            JOptionPane.showMessageDialog(mainWindow, "Lỗi kết nối. Vui lòng kiểm tra lại.",
+                    "Không thể thêm đơn vị", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    public static void deleteAccount(JFrame mainWindow, JTable accountTable, DefaultTableModel accountTm) {
+        int selectedRowView = accountTable.getSelectedRow();
+        if(selectedRowView == -1) {
+            JOptionPane.showMessageDialog(mainWindow,
+                    "Vui lòng chọn một tài khoản trong bảng trước khi thực hiện.",
+                    "Thông báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int selectedRowModel = accountTable.convertRowIndexToModel(selectedRowView);
+        String username = (String)accountTm.getValueAt(selectedRowModel, 0);
+        int confirm = JOptionPane.showConfirmDialog(mainWindow,
+                "Bạn có chắc chắn muốn xóa tài khoản " + username + "?",
+                "Xác nhận xóa", JOptionPane.YES_NO_OPTION);
+        if(confirm == JOptionPane.YES_OPTION) {
+            JsonObject request = new JsonObject();
+            request.addProperty("clientType", "manager");
+            request.addProperty("action", "DELETE_ACCOUNT");
+            request.addProperty("data", username);
+            JsonObject response = NetworkInitializer.getInstance().sendRequest(request);
+            System.out.println("Đang gửi yêu cầu xóa tài khoản: " + username);
+            if(response != null) {
+                String msg = response.get("message").getAsString();
+                String status = response.get("status").getAsString();
+                if(status.equals("ok")) {
+                    JOptionPane.showMessageDialog(mainWindow, msg, "Xóa tài khoản",
+                            JOptionPane.INFORMATION_MESSAGE);
+                }
+                else if(status.equals("error")) {
+                    JOptionPane.showMessageDialog(mainWindow, msg, "Xóa tài khoản", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }
     }
     public static void inviteCitizen() {
 

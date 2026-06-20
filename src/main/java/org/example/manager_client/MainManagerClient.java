@@ -8,10 +8,13 @@ import org.example.manager_client.helper.XMLHelper;
 import org.example.shared.helper.PwdHashHelper;
 import org.example.manager_client.helper.NetworkInitializer;
 import org.example.shared.helper.CustomSVGTranscoder;
+import org.example.shared.model.Account;
 import org.example.shared.model.CitizenRequest;
 import org.example.shared.model.Department;
 
 import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
@@ -33,6 +36,7 @@ import java.util.concurrent.Executors;
 public class MainManagerClient {
     private static final ExecutorService backgroundExecutor = Executors.newFixedThreadPool(3);
     private static int currentInviteCount = 0;
+    private static int role;
     private static JComboBox<Department> departmentList;
     private static String userName;
     private static final Map<Integer, JComponent[]> ROLE_PERMISSIONS = new HashMap<>();
@@ -41,8 +45,9 @@ public class MainManagerClient {
     private static JLabel numOfProcessedRequestSrv, maxConcurrentRqInDaySrv;
     private static Department selectedDept;
     private static JLabel requestNumber, fullNameSrv, nationalIdSrv;
+    private static JTable accountTable;
     public static CitizenRequest currentCtzRequest;
-    public static DefaultTableModel rqLogTm, rqQueueTm;
+    public static DefaultTableModel rqLogTm, rqQueueTm, accountTm;
     public static DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
 
     //Department updater
@@ -67,6 +72,14 @@ public class MainManagerClient {
                 numOfProcessedRequestSrv.setText(String.valueOf(selectedDept.getNumOfProcessedRequest()));
                 maxConcurrentRqInDaySrv.setText(String.valueOf(selectedDept.getMaxConcurrentRequestInDay()));
             }
+        }
+    });
+
+    //Account list updater
+    private static final javax.swing.Timer accountListUpdaterTimer = new Timer(1000, new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            DataUpdater.updateAccount(accountTm, accountTable);
         }
     });
 
@@ -285,17 +298,18 @@ public class MainManagerClient {
                                         JsonObject authData = response.getAsJsonObject("data");
                                         boolean isLoggedIn = authData.get("isLoggedIn").getAsBoolean();
                                         if(isLoggedIn) {
-                                            int role = authData.get("role").getAsInt();
-                                            JComponent[] allowedJButton = ROLE_PERMISSIONS.get(role);
-                                            if(allowedJButton != null) {
-                                                for(JComponent button : allowedJButton) {
-                                                    button.setVisible(true);
+                                            role = authData.get("role").getAsInt();
+                                            JComponent[] allowedJComponent = ROLE_PERMISSIONS.get(role);
+                                            if(allowedJComponent != null) {
+                                                for(JComponent component : allowedJComponent) {
+                                                    component.setVisible(true);
                                                 }
                                             }
                                             MainManagerClient.userName = authData.get("userName").getAsString();
                                             mainCardLayout.next(mainZone);
                                             departmentUpdaterTimer.start();
                                             ctzRequestUpdaterTimer.start();
+                                            accountListUpdaterTimer.start();
                                         }
                                         else {
                                             JOptionPane.showMessageDialog(null,
@@ -347,7 +361,6 @@ public class MainManagerClient {
                 JButton deleteDepartment = new JButton("Xóa đơn vị");
                 JButton changePwd = new JButton("Đổi mật khẩu");
                 JButton logout = new JButton("Đăng xuất");
-                ROLE_PERMISSIONS.put(0, new JComponent[]{importList, exportList, addDepartment, deleteDepartment});
                 departmentList.addItemListener(new ItemListener() {
                     @Override
                     public void itemStateChanged(ItemEvent e) {
@@ -631,12 +644,19 @@ public class MainManagerClient {
                                         JOptionPane.showMessageDialog(null,
                                                 "Mất kết nối với máy chủ.", "Lỗi mạng",
                                                 JOptionPane.ERROR_MESSAGE);
+                                        logout.setEnabled(true);
                                         return;
                                     }
                                     System.out.println("JSON: " + response);
                                     if("ok".equals(response.get("status").getAsString())) {
                                         boolean isLoggedOut = response.get("data").getAsBoolean();
                                         if(isLoggedOut) {
+                                            JComponent[] allowedJComponent = ROLE_PERMISSIONS.get(role);
+                                            if(allowedJComponent != null) {
+                                                for(JComponent component : allowedJComponent) {
+                                                    component.setVisible(false);
+                                                }
+                                            }
                                             mainCardLayout.next(mainZone);
                                             logout.setEnabled(true);
                                         }
@@ -679,11 +699,11 @@ public class MainManagerClient {
 
                 //Department information and account manager panel
                 JPanel deptPanel = new JPanel();
-                deptPanel.setBackground(Color.GRAY);
                 deptPanel.setLayout(new BoxLayout(deptPanel, BoxLayout.Y_AXIS));
                 JPanel deptInfoPanel = new JPanel();
                 deptInfoPanel.setLayout(new BoxLayout(deptInfoPanel, BoxLayout.Y_AXIS));
                 deptInfoPanel.setBorder(BorderFactory.createTitledBorder("Thông tin đơn vị"));
+                deptInfoPanel.setMinimumSize(new Dimension(400, 250));
                 deptInfoPanel.setPreferredSize(new Dimension(400, 250));
                 deptInfoPanel.setMaximumSize(deptInfoPanel.getPreferredSize());
                 deptInfoPanel.add(Box.createVerticalStrut(30));
@@ -724,7 +744,162 @@ public class MainManagerClient {
                 deptInfoPanel.add(deptDetailPanel);
 
                 JPanel deptAccountManagerPanel = new JPanel();
+                deptAccountManagerPanel.setLayout(new BorderLayout());
+                deptAccountManagerPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+                deptAccountManagerPanel.setPreferredSize(new Dimension(400, 400));
+                deptAccountManagerPanel.setMaximumSize(new Dimension(400, Integer.MAX_VALUE));
                 deptAccountManagerPanel.setBorder(BorderFactory.createTitledBorder("Quản lý tài khoản"));
+                deptAccountManagerPanel.setVisible(false);
+
+                JPanel accountButtonWrapper = new JPanel();
+                accountButtonWrapper.setLayout(new BoxLayout(accountButtonWrapper, BoxLayout.X_AXIS));
+                JButton createAccount = new JButton("Tạo tài khoản");
+                JButton deleteAccount = new JButton("Xóa tài khoản");
+                deleteAccount.setEnabled(false);
+                accountButtonWrapper.add(createAccount);
+                accountButtonWrapper.add(deleteAccount);
+                createAccount.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        JDialog createAccountDialog = new JDialog(mainWindow, "Tạo tài khoản", true);
+                        JPanel createAccountPanel = (JPanel)createAccountDialog.getContentPane();
+                        createAccountPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+                        createAccountPanel.setLayout(new BoxLayout(createAccountPanel, BoxLayout.Y_AXIS));
+                        JPanel fieldWrapper = new JPanel();
+                        fieldWrapper.setLayout(new GridLayout(3, 2, 30, 15)); // 2 dòng, 2 cột
+                        JLabel lblUsername = new JLabel("Tên đăng nhập");
+                        JTextField txtUsernameInput = new JTextField(15);
+                        JLabel lblPassword = new JLabel("Mật khẩu");
+                        JPasswordField txtPasswordInput = new JPasswordField(15);
+                        JLabel role = new JLabel("Vai trò");
+                        JComboBox<String> roleInput = new JComboBox<>();
+                        roleInput.addItem("Quản trị viên");
+                        roleInput.addItem("Người dùng");
+                        roleInput.setSelectedIndex(0);
+                        fieldWrapper.add(lblUsername);
+                        fieldWrapper.add(txtUsernameInput);
+                        fieldWrapper.add(lblPassword);
+                        fieldWrapper.add(txtPasswordInput);
+                        fieldWrapper.add(role);
+                        fieldWrapper.add(roleInput);
+                        createAccountPanel.add(fieldWrapper);
+                        createAccountPanel.add(Box.createVerticalStrut(20));
+                        JPanel btnWrapper = new JPanel();
+                        btnWrapper.setLayout(new BoxLayout(btnWrapper, BoxLayout.X_AXIS));
+                        JButton btnOk = new JButton("OK");
+                        JButton btnCancel = new JButton("Hủy bỏ");
+                        btnWrapper.add(btnOk);
+                        btnWrapper.add(Box.createHorizontalStrut(20));
+                        btnWrapper.add(btnCancel);
+                        createAccountPanel.add(btnWrapper);
+                        btnCancel.addActionListener(new ActionListener() {
+                            @Override
+                            public void actionPerformed(ActionEvent e) {
+                                createAccountDialog.dispose();
+                            }
+                        });
+                        btnOk.addActionListener(new ActionListener() {
+                            @Override
+                            public void actionPerformed(ActionEvent e) {
+                                String username = txtUsernameInput.getText().trim();
+                                char[] passwordChars = txtPasswordInput.getPassword();
+                                String password = new String(passwordChars).trim();
+                                String rawRole = roleInput.getSelectedItem().toString();
+                                System.out.println(rawRole);
+                                int role = -1;
+                                switch(rawRole) {
+                                    case "Quản trị viên":
+                                        role = 0;
+                                        break;
+                                    case "Người dùng":
+                                        role = 1;
+                                        break;
+                                }
+                                if(username.isEmpty()) {
+                                    JOptionPane.showMessageDialog(createAccountDialog,
+                                            "Tên đăng nhập không được bỏ trống. Vui lòng kiểm tra lại.",
+                                            "Lỗi nhập liệu", JOptionPane.ERROR_MESSAGE);
+                                    return;
+                                }
+                                if(password.isEmpty()) {
+                                    JOptionPane.showMessageDialog(createAccountDialog,
+                                            "Mật khẩu không được bỏ trống. Vui lòng kiểm tra lại.",
+                                            "Lỗi nhập liệu", JOptionPane.ERROR_MESSAGE);
+                                    return;
+                                }
+                                btnOk.setEnabled(false);
+                                String hashedPassword = PwdHashHelper.hashPwd(password);
+                                DataUpdater.createAccount(mainWindow, username, hashedPassword, role);
+                                createAccountDialog.dispose();
+                            }
+                        });
+                        createAccountDialog.pack();
+                        createAccountDialog.setResizable(false);
+                        createAccountDialog.setLocationRelativeTo(mainWindow);
+                        createAccountDialog.setVisible(true);
+                    }
+                });
+                deleteAccount.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        DataUpdater.deleteAccount(mainWindow, accountTable, accountTm); //
+                    }
+                });
+                deptAccountManagerPanel.add(accountButtonWrapper, BorderLayout.NORTH);
+
+                String[] accountTblColNames = {"Tên đăng nhập", "Vai trò"};
+                accountTm = new DefaultTableModel(accountTblColNames, 0) {
+                    @Override
+                    public boolean isCellEditable(int rowIndex, int columnIndex) {
+                        return false;
+                    }
+                    @Override
+                    public Class getColumnClass(int columnIndex) {
+                        if(columnIndex == 1) return Integer.class;
+                        return String.class;
+                    }
+                };
+                accountTable = new JTable(accountTm);
+                TableColumnModel accountTblColModel = accountTable.getColumnModel();
+                accountTable.setAutoCreateRowSorter(true);
+                accountTable.setRowHeight(25);
+                accountTable.getTableHeader().setFont(UIManager.getFont("defaultFont").deriveFont(Font.BOLD));
+                accountTable.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+                    @Override
+                    public void valueChanged(ListSelectionEvent e) {
+                        deleteAccount.setEnabled(accountTable.getSelectedRow() != -1);
+                    }
+                });
+                accountTblColModel.getColumn(1).setCellRenderer(new DefaultTableCellRenderer() {
+                    @Override
+                    protected void setValue(Object value) {
+                        if(value instanceof Integer) {
+                            if(((Integer)value).intValue() == 0) {
+                                setText("Quản trị viên");
+                            }
+                            else {
+                                setText("Người dùng");
+                            }
+                        }
+                        else {
+                            super.setValue(value);
+                        }
+                    }
+                });
+                accountTable.getSelectionModel().addListSelectionListener(e -> {
+                    if (!e.getValueIsAdjusting()) {
+                        int selectedRowView = accountTable.getSelectedRow();
+                        if (selectedRowView != -1) {
+                            int selectedRowModel = accountTable.convertRowIndexToModel(selectedRowView);
+                            String username = (String)accountTm.getValueAt(selectedRowModel, 0);
+                            Integer role = (Integer)accountTm.getValueAt(selectedRowModel, 1);
+                            Account selectedAccount = new Account(username, null, role);
+                            System.out.println(username);
+                        }
+                    }
+                });
+                JScrollPane accountTableScr = new JScrollPane(accountTable);
+                deptAccountManagerPanel.add(accountTableScr, BorderLayout.CENTER);
 
                 deptPanel.add(deptInfoPanel);
                 deptPanel.add(deptAccountManagerPanel);
@@ -917,6 +1092,8 @@ public class MainManagerClient {
                 rqLogDisplay.add(rqLogScrPane, BorderLayout.CENTER);
                 dashboardPane.add(rqLogDisplay, BorderLayout.CENTER);
                 mainZone.add(dashboardPane);
+                ROLE_PERMISSIONS.put(0, new JComponent[]{importList, exportList, addDepartment, deleteDepartment,
+                        deptAccountManagerPanel});
             }
         });
     }

@@ -260,7 +260,7 @@ public class SQLHelper {
         return result;
     }
 
-    public static Account getAccounts(String usrName) {
+    public static Account getAccount(String usrName) {
         Account acc = null;
         try(Session session = sessionFactory.openSession()) {
             Query<Account> accountQuery = session.createQuery("FROM Account WHERE userName = :userName", Account.class);
@@ -276,9 +276,21 @@ public class SQLHelper {
         return acc;
     }
 
+    public static List<Account> getAccounts() {
+        List<Account> accountList = null;
+        try(Session session = sessionFactory.openSession()) {
+            Query<Account> accountQuery = session.createQuery("FROM Account", Account.class);
+            accountList = accountQuery.list();
+        }
+        catch(Exception e) {
+            e.printStackTrace();
+        }
+        return accountList;
+    }
+
     public static boolean changePassword(String userName, String newPwd) {
         Transaction tx = null;
-        Account currentAcc = getAccounts(userName);
+        Account currentAcc = getAccount(userName);
         try(Session session = sessionFactory.openSession()) {
             tx = session.beginTransaction();
             if(currentAcc != null) {
@@ -327,6 +339,28 @@ public class SQLHelper {
             session.persist(newAccount);
             tx.commit();
             isCompleted = true;
+        }
+        catch(Exception e) {
+            if(tx != null) tx.rollback();
+            e.printStackTrace();
+        }
+        return isCompleted;
+    }
+
+    public static boolean deleteAccount(String usrName) {
+        boolean isCompleted = false;
+        Transaction tx = null;
+        try(Session session = sessionFactory.openSession()) {
+            List<Account> lacc = getAccounts();
+            tx = session.beginTransaction();
+            Account currentAccount = getAccount(usrName);
+            if(currentAccount != null) {
+                if(!currentAccount.getLoginStatus() && lacc.size() > 1) {
+                    session.remove(currentAccount);
+                    tx.commit();
+                    isCompleted = true;
+                }
+            }
         }
         catch(Exception e) {
             if(tx != null) tx.rollback();
