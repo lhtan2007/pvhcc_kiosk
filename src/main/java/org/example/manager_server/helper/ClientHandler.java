@@ -85,6 +85,40 @@ public class ClientHandler implements Runnable {
                     }
                     break;
 
+                case "EDIT_DEPARTMENT":
+                    JsonObject orgDeptData = requestData.get("data").getAsJsonObject();
+                    if(orgDeptData != null) {
+                        UUID deptId = UUID.fromString(orgDeptData.get("deptId").getAsString());
+                        String deptName = orgDeptData.get("deptName").getAsString();
+                        int maxConcurrentCtz = orgDeptData.get("maxConcurrentCtz").getAsInt();
+                        boolean isCompleted = SQLHelper.editDepartment(deptId, deptName,  maxConcurrentCtz);
+                        if(isCompleted) {
+                            response.addProperty("status", "ok");
+                            response.addProperty("message", "Đã sửa thành công đơn vị có thông tin vừa nhập.");
+                        }
+                        else {
+                            response.addProperty("status", "error");
+                            response.addProperty("message", "Không thể sửa đơn vị do bị trùng tên với đơn vị khác. Vui lòng kiểm tra lại.");
+                        }
+                    }
+                    break;
+
+                case "DELETE_DEPARTMENT":
+                    String deldept = requestData.get("data").getAsString();
+                    if(deldept != null) {
+                        UUID deptId = UUID.fromString(deldept);
+                        boolean isCompleted = SQLHelper.deleteDepartment(deptId);
+                        if(isCompleted) {
+                            response.addProperty("status", "ok");
+                            response.addProperty("message", "Đã xóa thành công đơn vị.");
+                        }
+                        else {
+                            response.addProperty("status", "error");
+                            response.addProperty("message", "Không thể xóa đơn vị. Vui lòng kiểm tra lại.");
+                        }
+                    }
+                    break;
+
                 case "GET_NEWEST_CITIZEN_REQUEST":
                     Department dept = SQLHelper.getDepartment(UUID.fromString(requestData.get("data").getAsString()));
                     if(dept != null) {
@@ -225,40 +259,6 @@ public class ClientHandler implements Runnable {
                     else {
                         response.addProperty("status", "error");
                         response.addProperty("message", "Tài khoản không tồn tại hoặc lỗi hệ thống.");
-                    }
-                    break;
-
-                case "EDIT_DEPARTMENT":
-                    JsonObject orgDeptData = requestData.get("data").getAsJsonObject();
-                    if(orgDeptData != null) {
-                        UUID deptId = UUID.fromString(orgDeptData.get("deptId").getAsString());
-                        String deptName = orgDeptData.get("deptName").getAsString();
-                        int maxConcurrentCtz = orgDeptData.get("maxConcurrentCtz").getAsInt();
-                        boolean isCompleted = SQLHelper.editDepartment(deptId, deptName,  maxConcurrentCtz);
-                        if(isCompleted) {
-                            response.addProperty("status", "ok");
-                            response.addProperty("message", "Đã sửa thành công đơn vị có thông tin vừa nhập.");
-                        }
-                        else {
-                            response.addProperty("status", "error");
-                            response.addProperty("message", "Không thể sửa đơn vị do bị trùng tên với đơn vị khác. Vui lòng kiểm tra lại.");
-                        }
-                    }
-                    break;
-
-                case "DELETE_DEPARTMENT":
-                    String deldept = requestData.get("data").getAsString();
-                    if(deldept != null) {
-                        UUID deptId = UUID.fromString(deldept);
-                        boolean isCompleted = SQLHelper.deleteDepartment(deptId);
-                        if(isCompleted) {
-                            response.addProperty("status", "ok");
-                            response.addProperty("message", "Đã xóa thành công đơn vị.");
-                        }
-                        else {
-                            response.addProperty("status", "error");
-                            response.addProperty("message", "Không thể xóa đơn vị. Vui lòng kiểm tra lại.");
-                        }
                     }
                     break;
 
