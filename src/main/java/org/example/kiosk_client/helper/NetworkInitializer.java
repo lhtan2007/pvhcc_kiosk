@@ -22,7 +22,7 @@ public class NetworkInitializer {
     private BufferedReader clientIn;
     private final Gson gson;
     private boolean isConnected = false;
-    private static final String CONFIG_FILE_PATH = "NetworkConfig.xml";
+    private static final String CONFIG_FILE_PATH = "target/classes/NetworkConfig.xml";
     private void loadConfigurationFromXML() {
         try {
             File configFile = new File(CONFIG_FILE_PATH);
@@ -78,7 +78,7 @@ public class NetworkInitializer {
         return instance;
     }
     public synchronized boolean connect() {
-        if(!clientSocket.isClosed()) {
+        if(clientSocket != null && !clientSocket.isClosed()) {
             return true;
         }
         try {

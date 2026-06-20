@@ -32,7 +32,7 @@ public class MainKiosk {
         UIManager.put("defaultFont", new Font("Segoe UI", Font.PLAIN, 24));
         //Connection check
         boolean isServerOnline = NetworkInitializer.getInstance().connect();
-        if (!isServerOnline) {
+        if(!isServerOnline) {
             System.err.println("CẢNH BÁO: Hiện tại không thể kết nối tới Server. Kiosk sẽ chạy ở chế độ offline.");
         }
 
