@@ -40,7 +40,7 @@ public class DepartmentController implements java.awt.event.ActionListener {
             requestJson.add("data", commonGson.toJsonTree(citizenRequest));
             response = NetworkInitializer.getInstance().sendRequest(requestJson);
 
-            System.out.println("Raw JSON từ Server: " + response.toString());
+            System.out.println("Raw JSON: " + response.toString());
 
             if ("ok".equals(response.get("status").getAsString())) {
                 String ticketNumber = response.get("data").getAsString();

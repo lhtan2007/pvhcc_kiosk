@@ -1,6 +1,7 @@
 package org.example.kiosk_client.view;
 
 import org.example.kiosk_client.helper.NetworkInitializer;
+import org.example.kiosk_client.MainKiosk;
 
 import javax.swing.*;
 import java.awt.*;
@@ -37,7 +38,16 @@ public class ConfigDialog extends JDialog {
                 String ip = ipInput.getText().trim();
                 int port = Integer.parseInt(portInput.getText().trim());
 
-                NetworkInitializer.getInstance().updateConfiguration(ip, port);
+                SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+                    @Override
+                    protected Void doInBackground() throws Exception {
+                        NetworkInitializer.getInstance().updateConfiguration(ip, port);
+                        MainKiosk.getConnectorInstance().stop();
+                        MainKiosk.getConnector().start();
+                        return null;
+                    }
+                };
+                worker.execute();
 
                 JOptionPane.showMessageDialog(this, "Đã áp dụng cấu hình mạng mới!");
                 dispose();

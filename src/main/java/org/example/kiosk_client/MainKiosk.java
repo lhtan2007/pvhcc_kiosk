@@ -20,6 +20,14 @@ import java.io.File;
 import java.io.IOException;
 
 public class MainKiosk {
+    private static Thread connector;
+    private static KioskNetConnector connectorInstance;
+    public static Thread getConnector() {
+        return connector;
+    }
+    public static KioskNetConnector getConnectorInstance() {
+        return connectorInstance;
+    }
     public static void main(String[] args) {
         //FlatLaf
         System.setProperty("flatlaf.useWindowDecorations", "false");
@@ -30,11 +38,11 @@ public class MainKiosk {
             System.err.println("Failed to initialize LaF");
         }
         UIManager.put("defaultFont", new Font("Segoe UI", Font.PLAIN, 24));
-        //Connection check
-        boolean isServerOnline = NetworkInitializer.getInstance().connect();
-        if(!isServerOnline) {
-            System.err.println("CẢNH BÁO: Hiện tại không thể kết nối tới Server. Kiosk sẽ chạy ở chế độ offline.");
-        }
+
+        //Connection initializer
+        connectorInstance = new KioskNetConnector();
+        connector = new Thread(connectorInstance);
+        connector.start();
 
         SwingUtilities.invokeLater(new Runnable() {
             @Override

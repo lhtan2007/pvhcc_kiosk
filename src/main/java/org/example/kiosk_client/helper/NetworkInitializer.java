@@ -2,12 +2,19 @@ package org.example.kiosk_client.helper;
 
 import com.google.gson.*;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import java.io.*;
 import java.lang.reflect.Type;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -83,7 +90,10 @@ public class NetworkInitializer {
         }
         try {
             System.out.println("Đang kết nối đến server " + IP_ADDRESS + ":" + PORT + "...");
-            this.clientSocket = new Socket(IP_ADDRESS, PORT);
+            this.clientSocket = new Socket();
+            InetSocketAddress socketAddress = new InetSocketAddress(IP_ADDRESS, PORT);
+            int timeoutMs = 3000;
+            this.clientSocket.connect(socketAddress, timeoutMs);
             this.clientOut = new PrintWriter(new OutputStreamWriter(clientSocket.getOutputStream(), StandardCharsets.UTF_8), true);
             this.clientIn = new BufferedReader(new InputStreamReader(clientSocket.getInputStream(), StandardCharsets.UTF_8));
             this.isConnected = true;
@@ -96,11 +106,37 @@ public class NetworkInitializer {
             return false;
         }
     }
-    public synchronized void updateConfiguration(String newIpAddress, int newPort) {
-        IP_ADDRESS = newIpAddress;
-        PORT = newPort;
-        this.closeConnection();
-        this.connect();
+    public synchronized void updateConfiguration(String ip, int port) {
+        try {
+            File configFile = new File(CONFIG_FILE_PATH);
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document document = builder.newDocument();
+            Element rootElement = document.createElement("configuration");
+            document.appendChild(rootElement);
+            Element ipElement = document.createElement("server-ip");
+            ipElement.setTextContent(ip.trim());
+            rootElement.appendChild(ipElement);
+            Element portElement = document.createElement("server-port");
+            portElement.setTextContent(String.valueOf(port).trim());
+            rootElement.appendChild(portElement);
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
+            transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "no");
+            DOMSource source = new DOMSource(document);
+            StreamResult result = new StreamResult(configFile);
+            transformer.transform(source, result);
+            this.IP_ADDRESS = ip;
+            this.PORT = port;
+            System.out.println("Đã lưu và đồng bộ cấu hình XML thành công: " + ip + ":" + port);
+            this.closeConnection();
+        }
+        catch (Exception e) {
+            System.err.println("Lỗi nghiêm trọng đã xảy ra khi ghi cấu hình ra file XML: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
     private JsonObject createErrorResponse(String message) {
         JsonObject response = new JsonObject();
