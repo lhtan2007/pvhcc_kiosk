@@ -666,6 +666,7 @@ public class MainManagerClient {
                                         JOptionPane.showMessageDialog(null,
                                                 "Lỗi hệ thống: " + error, "Thất bại",
                                                 JOptionPane.ERROR_MESSAGE);
+                                        logout.setEnabled(true);
                                     }
                                 }
                                 catch(Exception e) {
