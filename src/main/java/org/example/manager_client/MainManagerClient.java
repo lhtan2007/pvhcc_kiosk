@@ -402,7 +402,7 @@ public class MainManagerClient {
                             System.out.println(file.getAbsolutePath());
                             java.util.List<Department> dept = new ArrayList<Department>();
                             for(int i = 0; i < departmentList.getItemCount(); i++) {
-                                Department d =  (Department)departmentList.getItemAt(i);
+                                Department d = departmentList.getItemAt(i);
                                 dept.add(d);
                             }
                             XMLHelper.exportDepartmentsToXML(dept, file);
